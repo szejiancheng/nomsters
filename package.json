@@ -1,0 +1,25 @@
+{
+  "name": "nomsters",
+  "version": "1.0.0",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "~51.0.11",
+    "expo-image": "~1.12.11",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-native": "0.74.2",
+    "react-native-expo-image-cache": "^4.1.0",
+    "react-native-gesture-handler": "^2.16.2",
+    "expo-av": "~14.0.5"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "private": true
+}
