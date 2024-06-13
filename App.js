@@ -1,9 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
+
+//camera imports
+import { CameraView, useCameraPermissions } from 'expo-camera';
+
 
 // Assets importing
 
@@ -40,6 +44,16 @@ export default function App() {
   const [menuVisible, setMenuVisible] = useState(false); // State to track if menu is visible
   const [musicEnabled, setMusicEnabled] = useState(true); // State to track if music is enabled
   const [soundEnabled, setSoundEnabled] = useState(true); // State to track if sound is enabled
+
+  //camera constants
+  const [facing, setFacing] = useState('back');
+  const [permission, requestPermission] = useCameraPermissions();
+  const [cameraFadeAnim] = useState(new Animated.Value(1));
+
+
+
+
+  
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -204,6 +218,27 @@ export default function App() {
     }
   };
 
+
+  //Camera permissions
+  if (!permission) {
+    // Camera permissions are still loading.
+    return <View />;
+  }
+
+  if (!permission.granted) {
+    // Camera permissions are not granted yet.
+    return (
+      <View style={styles.container}>
+        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
+        <Button onPress={requestPermission} title="grant permission" />
+      </View>
+    );
+  }
+
+  function toggleCameraFacing() {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  }
+
   const renderMainScreen = () => (
     <View style={styles.container}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
@@ -295,12 +330,14 @@ export default function App() {
   );
 
   const renderCameraScreen = () => (
-    <View style={styles.cameraContainer}>
-      <View style={styles.cameraView} />
-      <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCameraScreen(false)}>
-        <Text style={styles.cameraButtonText}>Take Picture</Text>
+    <CameraView style={styles.cameraContainer} facing={facing}>
+      <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
+        <Text style={styles.text}>Flip</Text>
       </TouchableOpacity>
-    </View>
+      <TouchableOpacity style={styles.closeButton} onPress={() => setShowCameraScreen(false)}>
+        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+      </TouchableOpacity>
+    </CameraView>
   );
 
   const animatedWidth = healthBarWidth.interpolate({
@@ -438,6 +475,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuContainer: {
+    position: 'absolute',
+    top: 200, // Position it just below the menu button
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: 150,
+    zIndex: 10, // Make sure the menu is on top
+  },
+  flipButton: {
+    position: 'absolute',
+    bottom: 20, // Adjust this value to set the distance from the bottom
+    right: 20, // Adjust this value to set the distance from the right
+    width: 70,
+    height: 50,
+    backgroundColor: '#fff', 
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flipButtonContainer: {
     position: 'absolute',
     top: 200, // Position it just below the menu button
     right: 20,
