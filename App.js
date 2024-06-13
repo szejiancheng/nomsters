@@ -1,3 +1,10 @@
+// NOTE TO ALL DEVS:
+//manualAddGold is a function just for UI testing. Since we replaced FEED with the camera utility, 
+//this will be the temporary gold adding button for testing, mainly for shop UI. I can't add comments where they are specifically
+//because the react UI coding doesn't allow for comments in that section, so we need to, before any demos are released, remove the button and the function
+// use ctrl+f to find anything with the word 'manualTest' to delete them later on, when the gold system is added
+
+
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -5,7 +12,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-
 import * as FileSystem from 'expo-file-system';
 
 // Importing assets
@@ -76,10 +82,6 @@ export default function App() {
 
   // Feed pet handler
   const handleFeedPet = () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
-    setPetHealth(newHealth);
-    setGoldCoins(goldCoins + 10);
-    animateHealthBar(newHealth);
     Animated.timing(cameraFadeAnim, {
       toValue: 1,
       duration: 1000,
@@ -92,6 +94,14 @@ export default function App() {
   const handleMenuPress = () => {
     setMenuVisible(!menuVisible);
   };
+
+  //manualTest for adding gold
+  const manualTestAddGold = () => {
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    setPetHealth(newHealth);
+    setGoldCoins(goldCoins + 10);
+    animateHealthBar(newHealth);
+  }
 
   // Toggle music
   const toggleMusic = async () => {
@@ -331,6 +341,11 @@ export default function App() {
           <TouchableOpacity onPress={toggleSound}>
             <ExpoImage source={soundEnabled ? soundIcon : soundMuteIcon} style={styles.menuIcon} />
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuButton} onPress={manualTestAddGold}>
+              <Text style={styles.buttonText}>add gold</Text>
+            </TouchableOpacity>
+
         </View>
       )}
     </View>
