@@ -414,11 +414,13 @@ export default function App() {
     </Animated.View>
   );
   
-
   const renderPicturePreview = () => (
     <View style={styles.picturePreviewContainer}>
       <ExpoImage source={{ uri: capturedImage }} style={styles.capturedImage} />
-      <TouchableOpacity style={styles.closeButton} onPress={() => setCapturedImage(null)}>
+      <TouchableOpacity style={styles.closeButton} onPress={() => {
+        setCapturedImage(null);
+        setShowCameraScreen(true);
+      }}>
         <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.analyseButton} onPress={handleAnalysePicture}>
