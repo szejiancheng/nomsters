@@ -6,6 +6,8 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
+import * as FileSystem from 'expo-file-system';
+
 // Importing assets
 const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
@@ -45,6 +47,11 @@ export default function App() {
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraFadeAnim] = useState(new Animated.Value(1));
+
+  //camera storage
+  const [capturedImage, setCapturedImage] = useState(null);
+  const cameraRef = useRef(null);
+
 
   // Health decrease logic
   useEffect(() => {
@@ -162,9 +169,17 @@ export default function App() {
     
     
   };
-  const takePicture = () => {
-
-  }
+  const takePicture = async () => {
+    try {
+      if (cameraRef.current) {
+        const photo = await cameraRef.current.takePictureAsync();
+        setCapturedImage(photo.uri);
+        setShowCameraScreen(false);
+      }
+    } catch (error) {
+      console.error("Error taking picture: ", error);
+    }
+  };
       
 
   // Health message based on pet health
@@ -366,21 +381,46 @@ export default function App() {
   // Camera screen rendering
   const renderCameraScreen = () => (
     <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
-      <CameraView style={styles.cameraView} facing={facing}>
+      <CameraView
+        style={styles.cameraView}
+        ref={cameraRef}
+        facing={facing}
+      >
         <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
           <Text style={styles.text}>Flip</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.closeButton} onPress={closeCamera}>
           <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
         </TouchableOpacity>
-        
         <TouchableOpacity style={styles.takePicture} onPress={takePicture}>
           <ExpoImage source={takePictureIcon} style={styles.takePictureButton} />
         </TouchableOpacity>
-
       </CameraView>
     </Animated.View>
   );
+  
+
+  const renderPicturePreview = () => (
+    <View style={styles.picturePreviewContainer}>
+      <ExpoImage source={{ uri: capturedImage }} style={styles.capturedImage} />
+      <TouchableOpacity style={styles.closeButton} onPress={() => setCapturedImage(null)}>
+        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.analyseButton} onPress={handleAnalysePicture}>
+        <Text style={styles.buttonText}>Analyse</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const handleAnalysePicture = async () => {
+    const filename = capturedImage.split('/').pop();
+    const newPath = `${FileSystem.documentDirectory}${filename}`;
+    await FileSystem.moveAsync({
+      from: capturedImage,
+      to: newPath,
+    });
+    setCapturedImage(null);
+  };
 
   const animatedWidth = healthBarWidth.interpolate({
     inputRange: [0, 100],
@@ -395,10 +435,11 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
-        {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
+        {capturedImage ? renderPicturePreview() : (showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen()))}
       </Animated.View>
     </GestureHandlerRootView>
   );
+  
 }
 
 // Styles
@@ -675,5 +716,26 @@ const styles = StyleSheet.create({
   //   fontWeight: 'bold',
   // },
 
+
+
+  picturePreviewContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  capturedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  analyseButton: {
+    position: 'absolute',
+    bottom: 40,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 25,
+    width: 150,
+    alignItems: 'center',
+  },
 
 });
