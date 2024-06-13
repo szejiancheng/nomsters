@@ -4,30 +4,23 @@ import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
-
-//camera imports
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-
-// Assets importing
-
-const petGif = require('./assets/pets/frogbro.gif'); // frog pet
-const backgroundImage = require('./assets/backgrounds/beach.png'); // beach bg
-const bearClubImage = require('./assets/backgrounds/bearclub.png'); // bearclub bg
-const storeBackgroundImage = require('./assets/backgrounds/storebg.png'); // store bg
-const heartIcon = require('./assets/icons/heart.png'); // heart icon placeholder
-const storeIcon = require('./assets/icons/store.png'); // store icon
-const closeButtonIcon = require('./assets/icons/closebutton.png'); // close button icon
-const lockIcon = require('./assets/icons/lock.png'); // lock icon
-const musicIcon = require('./assets/icons/music.png'); // music icon
-const musicMuteIcon = require('./assets/icons/musicmute.png'); // music mute icon
-const soundIcon = require('./assets/icons/sound.png'); // sound icon
-const soundMuteIcon = require('./assets/icons/soundmute.png'); // sound mute icon
-
-const beachMusic = require('./assets/music/beach.wav'); // importing music for each bg
-const bearClubMusic = require('./assets/music/bearclub.wav'); // importing music for bearclub
-
-const backgrounds = [backgroundImage]; // Start with only the beach background
+const petGif = require('./assets/pets/frogbro.gif');
+const backgroundImage = require('./assets/backgrounds/beach.png');
+const bearClubImage = require('./assets/backgrounds/bearclub.png');
+const storeBackgroundImage = require('./assets/backgrounds/storebg.png');
+const heartIcon = require('./assets/icons/heart.png');
+const storeIcon = require('./assets/icons/store.png');
+const closeButtonIcon = require('./assets/icons/closebutton.png');
+const lockIcon = require('./assets/icons/lock.png');
+const musicIcon = require('./assets/icons/music.png');
+const musicMuteIcon = require('./assets/icons/musicmute.png');
+const soundIcon = require('./assets/icons/sound.png');
+const soundMuteIcon = require('./assets/icons/soundmute.png');
+const beachMusic = require('./assets/music/beach.wav');
+const bearClubMusic = require('./assets/music/bearclub.wav');
+const backgrounds = [backgroundImage];
 
 export default function App() {
   // Setting the starting parameters for our variables
@@ -50,11 +43,6 @@ export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraFadeAnim] = useState(new Animated.Value(1));
 
-
-
-
-  
-
   useEffect(() => {
     const interval = setInterval(() => {
       const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
@@ -75,7 +63,13 @@ export default function App() {
   }, [backgroundIndex]);
 
   const handleFeedPet = () => {
-    setShowCameraScreen(true); // Show camera screen when the feed button is pressed
+
+    Animated.timing(cameraFadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+    setShowCameraScreen(true);
   };
 
   const handleMenuPress = () => {
@@ -130,6 +124,21 @@ export default function App() {
       Animated.timing(backgroundFadeAnim, {
         toValue: 1,
         duration: 1000,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const closeCamera = () => {
+    Animated.timing(cameraFadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowCameraScreen(false);
+      Animated.timing(cameraFadeAnim, {
+        toValue: 1,
+        duration: 500,
         useNativeDriver: true,
       }).start();
     });
@@ -330,14 +339,16 @@ export default function App() {
   );
 
   const renderCameraScreen = () => (
-    <CameraView style={styles.cameraContainer} facing={facing}>
-      <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
-        <Text style={styles.text}>Flip</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.closeButton} onPress={() => setShowCameraScreen(false)}>
-        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-      </TouchableOpacity>
-    </CameraView>
+    <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
+      <CameraView style={styles.cameraView} facing={facing}>
+        <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
+          <Text style={styles.text}>Flip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.closeButton} onPress={closeCamera}>
+          <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+        </TouchableOpacity>
+      </CameraView>
+    </Animated.View>
   );
 
   const animatedWidth = healthBarWidth.interpolate({
@@ -443,7 +454,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginBottom: 100, // Adjust this value to move the pet higher
+    marginBottom: 100,
   },
   pet: {
     width: 150,
@@ -469,14 +480,14 @@ const styles = StyleSheet.create({
     right: 20,
     width: 100,
     height: 40,
-    backgroundColor: '#fff', // Blue color for the menu button
+    backgroundColor: '#fff',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuContainer: {
     position: 'absolute',
-    top: 200, // Position it just below the menu button
+    top: 200,
     right: 20,
     backgroundColor: 'white',
     borderRadius: 10,
@@ -484,22 +495,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: 150,
-    zIndex: 10, // Make sure the menu is on top
+    zIndex: 10,
   },
   flipButton: {
     position: 'absolute',
-    bottom: 20, // Adjust this value to set the distance from the bottom
-    right: 20, // Adjust this value to set the distance from the right
+    bottom: 20,
+    right: 20,
     width: 70,
     height: 50,
-    backgroundColor: '#fff', 
+    backgroundColor: '#fff',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   flipButtonContainer: {
     position: 'absolute',
-    top: 200, // Position it just below the menu button
+    top: 200,
     right: 20,
     backgroundColor: 'white',
     borderRadius: 10,
@@ -507,7 +518,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: 150,
-    zIndex: 10, // Make sure the menu is on top
+    zIndex: 10,
   },
   menuIcon: {
     width: 40,
@@ -522,7 +533,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    resizeMode: 'cover', // Ensure the background image fits the screen
+    resizeMode: 'cover',
   },
   headerContainer: {
     position: 'absolute',
@@ -542,7 +553,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   closeButtonIcon: {
-    width: 70, // Increased size of the close button
+    width: 70,
     height: 70,
   },
   storeItemsContainer: {
@@ -609,8 +620,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   cameraView: {
-    width: '90%',
-    height: '70%',
+    width: '100%',
+    height: '100%',
     backgroundColor: '#ccc',
   },
   cameraButton: {
