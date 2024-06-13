@@ -23,6 +23,10 @@ const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
 const backgrounds = [backgroundImage];
 
+
+//pinpoint
+const takePictureIcon = require('./assets/icons/takePicture.png');
+
 export default function App() {
   // State management
   const [petHealth, setPetHealth] = useState(100);
@@ -154,7 +158,14 @@ export default function App() {
         useNativeDriver: true,
       }).start();
     });
+
+    
+    
   };
+  const takePicture = () => {
+
+  }
+      
 
   // Health message based on pet health
   const getHealthMessage = () => {
@@ -362,6 +373,11 @@ export default function App() {
         <TouchableOpacity style={styles.closeButton} onPress={closeCamera}>
           <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
         </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.takePicture} onPress={takePicture}>
+          <ExpoImage source={takePictureIcon} style={styles.takePictureButton} />
+        </TouchableOpacity>
+
       </CameraView>
     </Animated.View>
   );
@@ -640,17 +656,24 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#ccc',
   },
-  cameraButton: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 25,
-    width: 150,
-    alignItems: 'center',
-    marginTop: 20,
+
+  takePicture: {
+    position: 'absolute',
+    alignSelf: 'center',
+    // alignItems: 'center',
+    bottom: 250,
   },
-  cameraButtonText: {
-    fontSize: 20,
-    color: '#000',
-    fontWeight: 'bold',
+  takePictureButton: {
+    width: 370,
+    height: 370,
   },
+
+  // //not used
+  // cameraButtonText: {
+  //   fontSize: 20,
+  //   color: '#000',
+  //   fontWeight: 'bold',
+  // },
+
+
 });
