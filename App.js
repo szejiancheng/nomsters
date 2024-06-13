@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 
-//assets importing
+// Assets importing
 
 const petGif = require('./assets/pets/frogbro.gif'); // frog pet
 const backgroundImage = require('./assets/backgrounds/beach.png'); // beach bg
@@ -20,18 +20,18 @@ const musicMuteIcon = require('./assets/icons/musicmute.png'); // music mute ico
 const soundIcon = require('./assets/icons/sound.png'); // sound icon
 const soundMuteIcon = require('./assets/icons/soundmute.png'); // sound mute icon
 
-const beachMusic = require('./assets/music/beach.wav'); //importing music for each bg
-const bearClubMusic = require('./assets/music/bearclub.wav'); //importing music for bearclub
+const beachMusic = require('./assets/music/beach.wav'); // importing music for each bg
+const bearClubMusic = require('./assets/music/bearclub.wav'); // importing music for bearclub
 
 const backgrounds = [backgroundImage]; // Start with only the beach background
 
-
 export default function App() {
-  //setting the starting parameters for our variables
-  const [petHealth, setPetHealth] = useState(100); //pet health
-  const healthBarWidth = useRef(new Animated.Value(100)).current; //healthbar width (animated for the smooth transitions)
-  const [storeFadeAnim] = useState(new Animated.Value(1)); //just a parameter for fading the store background
+  // Setting the starting parameters for our variables
+  const [petHealth, setPetHealth] = useState(100); // pet health
+  const healthBarWidth = useRef(new Animated.Value(100)).current; // healthbar width (animated for the smooth transitions)
+  const [storeFadeAnim] = useState(new Animated.Value(1)); // just a parameter for fading the store background
   const [showNewScreen, setShowNewScreen] = useState(false);
+  const [showCameraScreen, setShowCameraScreen] = useState(false); // New state for showing camera screen
   const [goldCoins, setGoldCoins] = useState(0);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [backgroundFadeAnim] = useState(new Animated.Value(1)); // New animation value for background fade
@@ -61,10 +61,7 @@ export default function App() {
   }, [backgroundIndex]);
 
   const handleFeedPet = () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
-    setPetHealth(newHealth);
-    setGoldCoins(goldCoins + 10);
-    animateHealthBar(newHealth);
+    setShowCameraScreen(true); // Show camera screen when the feed button is pressed
   };
 
   const handleMenuPress = () => {
@@ -297,6 +294,15 @@ export default function App() {
     </Animated.View>
   );
 
+  const renderCameraScreen = () => (
+    <View style={styles.cameraContainer}>
+      <View style={styles.cameraView} />
+      <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCameraScreen(false)}>
+        <Text style={styles.cameraButtonText}>Take Picture</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   const animatedWidth = healthBarWidth.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
@@ -310,7 +316,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
-        {showNewScreen ? renderStoreScreen() : renderMainScreen()}
+        {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
       </Animated.View>
     </GestureHandlerRootView>
   );
@@ -536,5 +542,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  cameraContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  cameraView: {
+    width: '90%',
+    height: '70%',
+    backgroundColor: '#ccc',
+  },
+  cameraButton: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 25,
+    width: 150,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  cameraButtonText: {
+    fontSize: 20,
+    color: '#000',
+    fontWeight: 'bold',
+  },
 });
-
