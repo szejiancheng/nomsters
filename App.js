@@ -6,6 +6,7 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
+// Importing assets
 const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
 const bearClubImage = require('./assets/backgrounds/bearclub.png');
@@ -23,26 +24,25 @@ const bearClubMusic = require('./assets/music/bearclub.wav');
 const backgrounds = [backgroundImage];
 
 export default function App() {
-  // Setting the starting parameters for our variables
-  const [petHealth, setPetHealth] = useState(100); // pet health
-  const healthBarWidth = useRef(new Animated.Value(100)).current; // healthbar width (animated for the smooth transitions)
-  const [storeFadeAnim] = useState(new Animated.Value(1)); // just a parameter for fading the store background
+  // State management
+  const [petHealth, setPetHealth] = useState(100);
+  const healthBarWidth = useRef(new Animated.Value(100)).current;
+  const [storeFadeAnim] = useState(new Animated.Value(1));
   const [showNewScreen, setShowNewScreen] = useState(false);
-  const [showCameraScreen, setShowCameraScreen] = useState(false); // New state for showing camera screen
+  const [showCameraScreen, setShowCameraScreen] = useState(false);
   const [goldCoins, setGoldCoins] = useState(0);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
-  const [backgroundFadeAnim] = useState(new Animated.Value(1)); // New animation value for background fade
-  const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false); // State to track if bearclub is unlocked
-  const [sound, setSound] = useState(null); // State to hold the current sound object
-  const [menuVisible, setMenuVisible] = useState(false); // State to track if menu is visible
-  const [musicEnabled, setMusicEnabled] = useState(true); // State to track if music is enabled
-  const [soundEnabled, setSoundEnabled] = useState(true); // State to track if sound is enabled
-
-  //camera constants
+  const [backgroundFadeAnim] = useState(new Animated.Value(1));
+  const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [sound, setSound] = useState(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraFadeAnim] = useState(new Animated.Value(1));
 
+  // Health decrease logic
   useEffect(() => {
     const interval = setInterval(() => {
       const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
@@ -50,9 +50,10 @@ export default function App() {
       animateHealthBar(newHealth);
     }, 2000);
 
-    return () => clearInterval(interval); // Clear the interval when the component is unmounted
+    return () => clearInterval(interval);
   }, [petHealth]);
 
+  // Play background music on background change
   useEffect(() => {
     playBackgroundMusic();
     return () => {
@@ -62,8 +63,12 @@ export default function App() {
     };
   }, [backgroundIndex]);
 
+  // Feed pet handler
   const handleFeedPet = () => {
-
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    setPetHealth(newHealth);
+    setGoldCoins(goldCoins + 10);
+    animateHealthBar(newHealth);
     Animated.timing(cameraFadeAnim, {
       toValue: 1,
       duration: 1000,
@@ -72,10 +77,12 @@ export default function App() {
     setShowCameraScreen(true);
   };
 
+  // Menu visibility toggle
   const handleMenuPress = () => {
     setMenuVisible(!menuVisible);
   };
 
+  // Toggle music
   const toggleMusic = async () => {
     setMusicEnabled(!musicEnabled);
     if (sound) {
@@ -87,10 +94,12 @@ export default function App() {
     }
   };
 
+  // Toggle sound
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
   };
 
+  // Animate health bar
   const animateHealthBar = (health) => {
     Animated.timing(healthBarWidth, {
       toValue: health,
@@ -99,6 +108,7 @@ export default function App() {
     }).start();
   };
 
+  // Open store animation
   const openStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -114,6 +124,7 @@ export default function App() {
     });
   };
 
+  // Close store animation
   const closeStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -129,6 +140,7 @@ export default function App() {
     });
   };
 
+  // Close camera animation
   const closeCamera = () => {
     Animated.timing(cameraFadeAnim, {
       toValue: 0,
@@ -144,6 +156,7 @@ export default function App() {
     });
   };
 
+  // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
       return 'Frogbro is hungry! Feed me!';
@@ -154,10 +167,10 @@ export default function App() {
     }
   };
 
+  // Handle gesture for background change
   const handleGesture = ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
       if (nativeEvent.translationX > 50) {
-        // Swiped right
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -165,7 +178,7 @@ export default function App() {
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
             if (prevIndex === 1 && !isBearClubUnlocked) {
-              return 0; // Prevent swiping to bearclub if locked
+              return 0;
             }
             return (prevIndex - 1 + backgrounds.length) % backgrounds.length;
           });
@@ -176,7 +189,6 @@ export default function App() {
           }).start();
         });
       } else if (nativeEvent.translationX < -50) {
-        // Swiped left
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -184,7 +196,7 @@ export default function App() {
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
             if (prevIndex === 0 && !isBearClubUnlocked) {
-              return 0; // Prevent swiping to bearclub if locked
+              return 0;
             }
             return (prevIndex + 1) % backgrounds.length;
           });
@@ -198,14 +210,16 @@ export default function App() {
     }
   };
 
+  // Unlock bear club feature
   const unlockBearClub = () => {
     if (goldCoins >= 100) {
       setGoldCoins(goldCoins - 100);
       setIsBearClubUnlocked(true);
-      backgrounds.push(bearClubImage); // Add bearclub to backgrounds
+      backgrounds.push(bearClubImage);
     }
   };
 
+  // Play background music based on background index
   const playBackgroundMusic = async () => {
     try {
       if (sound) {
@@ -227,15 +241,12 @@ export default function App() {
     }
   };
 
-
-  //Camera permissions
+  // Handle camera permissions
   if (!permission) {
-    // Camera permissions are still loading.
     return <View />;
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
       <View style={styles.container}>
         <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
@@ -244,10 +255,12 @@ export default function App() {
     );
   }
 
+  // Toggle camera facing
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
 
+  // Main screen rendering
   const renderMainScreen = () => (
     <View style={styles.container}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
@@ -297,6 +310,7 @@ export default function App() {
     </View>
   );
 
+  // Store screen rendering
   const renderStoreScreen = () => (
     <Animated.View style={[styles.newScreenContainer, { opacity: storeFadeAnim }]}>
       <ExpoImage source={storeBackgroundImage} style={styles.newBackground} />
@@ -338,6 +352,7 @@ export default function App() {
     </Animated.View>
   );
 
+  // Camera screen rendering
   const renderCameraScreen = () => (
     <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
       <CameraView style={styles.cameraView} facing={facing}>
@@ -370,6 +385,7 @@ export default function App() {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
