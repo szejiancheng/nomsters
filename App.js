@@ -302,6 +302,15 @@ export default function App() {
     }
   };
 
+  const handleInventoryPetsPress = () => {
+  };
+
+  const handleInventoryItemsPress = () => {
+  };
+
+  const handleInventoryBackgroundsPress = () => {
+  };
+
   // Play background music based on background index
   const playBackgroundMusic = async () => {
     try {
@@ -520,6 +529,17 @@ export default function App() {
         </TouchableOpacity>
         <View style={styles.inventoryHeaderContainer}>
           <Text style={styles.inventoryTitle}>Inventory</Text>
+        </View>
+        <View style={styles.inventoryButtonContainer}>
+          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryPetsPress}>
+            <Text style={styles.inventoryText}>Pets</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryItemsPress}>
+            <Text style={styles.inventoryText}>Items</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryBackgroundsPress}>
+            <Text style={styles.inventoryText}>Backgrounds</Text>
+          </TouchableOpacity>
         </View>
         {/* Inventory items will be added here */}
       </Animated.View>
@@ -855,7 +875,7 @@ const styles = StyleSheet.create({
     color: '#d3b683',
     fontWeight: 'bold',
     marginBottom: 20,
-    marginTop: 30,
+    marginTop: 45,
   },
   inventoryCloseButton: {
     position: 'absolute',
@@ -868,5 +888,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
   },  
+
+  inventoryText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center', 
+  },
+  
+  inventoryButtons: {
+    backgroundColor: '#d3c683',
+    padding: 20,
+    borderRadius: 25,
+    width: 200,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  
+  inventoryButtonContainer: {
+    flexDirection: 'column',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 20,
+    width: '80%',
+    padding: 20,
+    height: 600,
+    borderRadius: 10,
+  },
+  
 });
 
