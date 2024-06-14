@@ -4,7 +4,7 @@
 //because the react UI coding doesn't allow for comments in that section, so we need to, before any demos are released, remove the button and the function
 // use ctrl+f to find anything with the word 'manualTest' to delete them later on, when the gold system is added
 
-
+// LIBRARY IMPORTS
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -14,7 +14,7 @@ import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 
-// Importing assets
+// ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
 const bearClubImage = require('./assets/backgrounds/bearclub.png');
@@ -30,34 +30,36 @@ const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
 const backgrounds = [backgroundImage];
-
-
-//pinpoint
 const takePictureIcon = require('./assets/icons/takePicture.png');
 
 export default function App() {
-  // State management
+  // STATE MANAGEMENT
+  // Health Bar
   const [petHealth, setPetHealth] = useState(100);
   const healthBarWidth = useRef(new Animated.Value(100)).current;
+  // Fade Animations
+  const [cameraFadeAnim] = useState(new Animated.Value(1));
   const [storeFadeAnim] = useState(new Animated.Value(1));
-  const [showNewScreen, setShowNewScreen] = useState(false);
-  const [showCameraScreen, setShowCameraScreen] = useState(false);
-  const [goldCoins, setGoldCoins] = useState(0);
-  const [backgroundIndex, setBackgroundIndex] = useState(0);
   const [backgroundFadeAnim] = useState(new Animated.Value(1));
+  // Screen Renders
+  const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
+  const [showCameraScreen, setShowCameraScreen] = useState(false);
+  const [backgroundIndex, setBackgroundIndex] = useState(0);
+  // Currency
+  const [goldCoins, setGoldCoins] = useState(0);
+  // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
-  const [sound, setSound] = useState(null);
+  // Utility
   const [menuVisible, setMenuVisible] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [sound, setSound] = useState(null);
+  // Camera
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
-  const [cameraFadeAnim] = useState(new Animated.Value(1));
-
-  //camera storage
+  // Camera Storage
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
-
 
   // Health decrease logic
   useEffect(() => {
@@ -103,7 +105,7 @@ export default function App() {
     animateHealthBar(newHealth);
   }
 
-  // Toggle music
+  // Toggle Music
   const toggleMusic = async () => {
     setMusicEnabled(!musicEnabled);
     if (sound) {
@@ -115,12 +117,12 @@ export default function App() {
     }
   };
 
-  // Toggle sound
+  // Toggle Sound
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
   };
 
-  // Animate health bar
+  // Animate Health Bar
   const animateHealthBar = (health) => {
     Animated.timing(healthBarWidth, {
       toValue: health,
@@ -129,7 +131,7 @@ export default function App() {
     }).start();
   };
 
-  // Open store animation
+  // Open Store Animation
   const openStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -145,7 +147,7 @@ export default function App() {
     });
   };
 
-  // Close store animation
+  // Close Store Animation
   const closeStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -161,7 +163,7 @@ export default function App() {
     });
   };
 
-  // Close camera animation
+  // Close Camera Animation
   const closeCamera = () => {
     Animated.timing(cameraFadeAnim, {
       toValue: 0,
@@ -177,7 +179,7 @@ export default function App() {
     });
 
     
-    
+  // Take Picture Button Functionality
   };
   const takePicture = async () => {
     try {
@@ -191,7 +193,6 @@ export default function App() {
     }
   };
       
-
   // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
@@ -203,7 +204,7 @@ export default function App() {
     }
   };
 
-  // Handle gesture for background change
+  // Swipe gesture for background change
   const handleGesture = ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
       if (nativeEvent.translationX > 50) {
@@ -243,15 +244,6 @@ export default function App() {
           }).start();
         });
       }
-    }
-  };
-
-  // Unlock bear club feature
-  const unlockBearClub = () => {
-    if (goldCoins >= 100) {
-      setGoldCoins(goldCoins - 100);
-      setIsBearClubUnlocked(true);
-      backgrounds.push(bearClubImage);
     }
   };
 
@@ -295,6 +287,16 @@ export default function App() {
   function toggleCameraFacing() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
+
+  // ITEM UNLOCKS
+  // Unlock Bear Club
+  const unlockBearClub = () => {
+    if (goldCoins >= 100) {
+      setGoldCoins(goldCoins - 100);
+      setIsBearClubUnlocked(true);
+      backgrounds.push(bearClubImage);
+    }
+  };
 
   // Main screen rendering
   const renderMainScreen = () => (
@@ -414,6 +416,7 @@ export default function App() {
     </Animated.View>
   );
   
+  // Render Picture Preview Dialogue
   const renderPicturePreview = () => (
     <View style={styles.picturePreviewContainer}>
       <ExpoImage source={{ uri: capturedImage }} style={styles.capturedImage} />
@@ -429,6 +432,7 @@ export default function App() {
     </View>
   );
 
+  // Analyse Picture Feature (to add send to API)
   const handleAnalysePicture = async () => {
     const filename = capturedImage.split('/').pop();
     const newPath = `${FileSystem.documentDirectory}${filename}`;
@@ -439,6 +443,7 @@ export default function App() {
     setCapturedImage(null);
   };
 
+  // Health Bar Animations
   const animatedWidth = healthBarWidth.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
@@ -449,6 +454,7 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
+  // App Structure (With Gesture Handler as the base)
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
@@ -714,7 +720,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#ccc',
   },
-
   takePicture: {
     position: 'absolute',
     alignSelf: 'center',
@@ -725,16 +730,6 @@ const styles = StyleSheet.create({
     width: 370,
     height: 370,
   },
-
-  // //not used
-  // cameraButtonText: {
-  //   fontSize: 20,
-  //   color: '#000',
-  //   fontWeight: 'bold',
-  // },
-
-
-
   picturePreviewContainer: {
     flex: 1,
     justifyContent: 'center',
