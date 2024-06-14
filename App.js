@@ -44,6 +44,7 @@ export default function App() {
   // Screen Renders
   const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
   const [showCameraScreen, setShowCameraScreen] = useState(false);
+  const [showInventoryScreen, setShowInventoryScreen] = useState(false);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   // Currency
   const [goldCoins, setGoldCoins] = useState(0);
@@ -62,6 +63,38 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
 
+  // Inventory Slide Animation
+  const [inventorySlideAnim] = useState(new Animated.Value(Dimensions.get('window').height));
+  const [mainScreenSlideAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (inventoryVisible) {
+      Animated.timing(inventorySlideAnim, {
+        toValue: 0,
+        duration: 700, // Increased duration for slower animation
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(mainScreenSlideAnim, {
+        toValue: -Dimensions.get('window').height * 0.5, // Adjusted to show part of the main screen
+        duration: 700, // Increased duration for slower animation
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(inventorySlideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 700, // Increased duration for slower animation
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(mainScreenSlideAnim, {
+        toValue: 0,
+        duration: 700, // Increased duration for slower animation
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [inventoryVisible]);
+    
+  
+  
   // Health decrease logic
   useEffect(() => {
     const interval = setInterval(() => {
@@ -101,6 +134,7 @@ export default function App() {
   // Tap pet open inventory
   const handlePetPress = () => {
     setInventoryVisible(!inventoryVisible);
+    setShowInventoryScreen(!showInventoryScreen);
   };
 
   // manualTest for adding gold
@@ -109,7 +143,7 @@ export default function App() {
     setPetHealth(newHealth);
     setGoldCoins(goldCoins + 10);
     animateHealthBar(newHealth);
-  }
+  };
 
   // Toggle Music
   const toggleMusic = async () => {
@@ -183,10 +217,9 @@ export default function App() {
         useNativeDriver: true,
       }).start();
     });
-
-    
-  // Take Picture Button Functionality
   };
+
+  // Take Picture Button Functionality
   const takePicture = async () => {
     try {
       if (cameraRef.current) {
@@ -198,7 +231,7 @@ export default function App() {
       console.error("Error taking picture: ", error);
     }
   };
-      
+
   // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
@@ -306,7 +339,7 @@ export default function App() {
 
   // Main screen rendering
   const renderMainScreen = () => (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { transform: [{ translateY: mainScreenSlideAnim }] }]}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <Animated.View style={styles.container}>
           <Animated.View style={{ ...styles.backgroundContainer, opacity: backgroundFadeAnim }}>
@@ -356,21 +389,8 @@ export default function App() {
           </TouchableOpacity>
         </View>
       )}
-      {inventoryVisible && (
-        <View style={styles.inventoryOverlay}>
-          <View style={styles.inventoryContainer}>
-            <TouchableOpacity style={styles.closeButton} onPress={handlePetPress}>
-              <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-            </TouchableOpacity>
-            <Text style={styles.inventoryTitle}>Inventory</Text>
-            {/* Inventory items will be added here */}
-          </View>
-        </View>
-      )}
-    </View>
+    </Animated.View>
   );
-  
-  
 
   // Store screen rendering
   const renderStoreScreen = () => (
@@ -434,7 +454,7 @@ export default function App() {
       </CameraView>
     </Animated.View>
   );
-  
+
   // Render Picture Preview Dialogue
   const renderPicturePreview = () => (
     <View style={styles.picturePreviewContainer}>
@@ -473,15 +493,37 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
-  // App Structure (With Gesture Handler as the base)
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <Animated.View style={{ flex: 1 }}>
-        {capturedImage ? renderPicturePreview() : (showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen()))}
-      </Animated.View>
-    </GestureHandlerRootView>
+  // Inventory screen rendering
+  const renderInventoryScreen = () => (
+    <View style={styles.inventoryContainer}>
+      <TouchableOpacity style={styles.inventoryCloseButton} onPress={handlePetPress}>
+        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+      </TouchableOpacity>
+      <Text style={styles.inventoryTitle}>Inventory</Text>
+      {/* Inventory items will be added here */}
+    </View>
   );
   
+
+  // App Structure (With Gesture Handler as the base)
+return (
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <Animated.View style={{ flex: 1 }}>
+      {capturedImage ? renderPicturePreview() : (
+        <>
+          <Animated.View style={{ flex: 1, transform: [{ translateY: mainScreenSlideAnim }] }}>
+            {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
+          </Animated.View>
+          <Animated.View style={[styles.inventoryOverlay, { transform: [{ translateY: inventorySlideAnim }] }]}>
+            {renderInventoryScreen()}
+          </Animated.View>
+        </>
+      )}
+    </Animated.View>
+  </GestureHandlerRootView>
+);
+
+
 }
 
 // Styles
@@ -742,7 +784,6 @@ const styles = StyleSheet.create({
   takePicture: {
     position: 'absolute',
     alignSelf: 'center',
-    // alignItems: 'center',
     bottom: 250,
   },
   takePictureButton: {
@@ -768,7 +809,6 @@ const styles = StyleSheet.create({
     width: 150,
     alignItems: 'center',
   },
-
   inventoryOverlay: {
     position: 'absolute',
     top: 0,
@@ -776,22 +816,28 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
   inventoryContainer: {
-    width: '90%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
     backgroundColor: 'white',
-    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   inventoryTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
+    marginTop: 20,
   },
-  
-
+  inventoryCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 2,
+  },
 });
+
