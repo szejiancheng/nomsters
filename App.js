@@ -54,6 +54,7 @@ export default function App() {
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sound, setSound] = useState(null);
+  const [inventoryVisible, setInventoryVisible] = useState(false);
   // Camera
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -97,7 +98,12 @@ export default function App() {
     setMenuVisible(!menuVisible);
   };
 
-  //manualTest for adding gold
+  // Tap pet open inventory
+  const handlePetPress = () => {
+    setInventoryVisible(!inventoryVisible);
+  };
+
+  // manualTest for adding gold
   const manualTestAddGold = () => {
     const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
     setPetHealth(newHealth);
@@ -324,7 +330,9 @@ export default function App() {
             <Text style={styles.goldText}>{goldCoins} Gold</Text>
           </View>
           <View style={styles.content}>
-            <ExpoImage source={petGif} style={styles.pet} />
+            <TouchableOpacity onPress={handlePetPress}>
+              <ExpoImage source={petGif} style={styles.pet} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.button} onPress={handleFeedPet}>
               <Text style={styles.buttonText}>FEED</Text>
             </TouchableOpacity>
@@ -343,15 +351,26 @@ export default function App() {
           <TouchableOpacity onPress={toggleSound}>
             <ExpoImage source={soundEnabled ? soundIcon : soundMuteIcon} style={styles.menuIcon} />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.menuButton} onPress={manualTestAddGold}>
-              <Text style={styles.buttonText}>add gold</Text>
+            <Text style={styles.buttonText}>add gold</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {inventoryVisible && (
+        <View style={styles.inventoryOverlay}>
+          <View style={styles.inventoryContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={handlePetPress}>
+              <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
             </TouchableOpacity>
-
+            <Text style={styles.inventoryTitle}>Inventory</Text>
+            {/* Inventory items will be added here */}
+          </View>
         </View>
       )}
     </View>
   );
+  
+  
 
   // Store screen rendering
   const renderStoreScreen = () => (
@@ -749,5 +768,30 @@ const styles = StyleSheet.create({
     width: 150,
     alignItems: 'center',
   },
+
+  inventoryOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inventoryContainer: {
+    width: '90%',
+    height: '90%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  inventoryTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  
 
 });
