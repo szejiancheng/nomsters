@@ -19,6 +19,7 @@ const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
 const bearClubImage = require('./assets/backgrounds/bearclub.png');
 const storeBackgroundImage = require('./assets/backgrounds/storebg.png');
+const inventoryBackgroundImage = require('./assets/backgrounds/inventory.png');
 const heartIcon = require('./assets/icons/heart.png');
 const storeIcon = require('./assets/icons/store.png');
 const closeButtonIcon = require('./assets/icons/closebutton.png');
@@ -508,18 +509,24 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
+
   // Inventory screen rendering
   const renderInventoryScreen = () => (
     <PanGestureHandler onHandlerStateChange={handleInventoryGesture}>
-      <Animated.View style={styles.inventoryContainer}>
+      <Animated.View style={styles.backgroundContainer}>
+        <ExpoImage source={inventoryBackgroundImage} style={styles.background} />
         <TouchableOpacity style={styles.inventoryCloseButton} onPress={handlePetPress}>
           <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
         </TouchableOpacity>
-        <Text style={styles.inventoryTitle}>Inventory</Text>
+        <View style={styles.inventoryHeaderContainer}>
+          <Text style={styles.inventoryTitle}>Inventory</Text>
+        </View>
         {/* Inventory items will be added here */}
       </Animated.View>
     </PanGestureHandler>
   );
+
+
 
 
 // App Structure (With Gesture Handler as the base)
@@ -844,10 +851,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   inventoryTitle: {
-    fontSize: 24,
+    fontSize: 50,
+    color: '#d3b683',
     fontWeight: 'bold',
     marginBottom: 20,
-    marginTop: 20,
+    marginTop: 30,
   },
   inventoryCloseButton: {
     position: 'absolute',
@@ -855,5 +863,10 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 2,
   },
+  inventoryHeaderContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: 20,
+  },  
 });
 
