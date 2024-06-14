@@ -1,46 +1,67 @@
+// NOTE TO ALL DEVS:
+//manualAddGold is a function just for UI testing. Since we replaced FEED with the camera utility, 
+//this will be the temporary gold adding button for testing, mainly for shop UI. I can't add comments where they are specifically
+//because the react UI coding doesn't allow for comments in that section, so we need to, before any demos are released, remove the button and the function
+// use ctrl+f to find anything with the word 'manualTest' to delete them later on, when the gold system is added
+
+// LIBRARY IMPORTS
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as FileSystem from 'expo-file-system';
 
-//assets importing
-
-const petGif = require('./assets/pets/frogbro.gif'); // frog pet
-const backgroundImage = require('./assets/backgrounds/beach.png'); // beach bg
-const bearClubImage = require('./assets/backgrounds/bearclub.png'); // bearclub bg
-const storeBackgroundImage = require('./assets/backgrounds/storebg.png'); // store bg
-const heartIcon = require('./assets/icons/heart.png'); // heart icon placeholder
-const storeIcon = require('./assets/icons/store.png'); // store icon
-const closeButtonIcon = require('./assets/icons/closebutton.png'); // close button icon
-const lockIcon = require('./assets/icons/lock.png'); // lock icon
-const musicIcon = require('./assets/icons/music.png'); // music icon
-const musicMuteIcon = require('./assets/icons/musicmute.png'); // music mute icon
-const soundIcon = require('./assets/icons/sound.png'); // sound icon
-const soundMuteIcon = require('./assets/icons/soundmute.png'); // sound mute icon
-
-const beachMusic = require('./assets/music/beach.wav'); //importing music for each bg
-const bearClubMusic = require('./assets/music/bearclub.wav'); //importing music for bearclub
-
-const backgrounds = [backgroundImage]; // Start with only the beach background
-
+// ASSET IMPORTS
+const petGif = require('./assets/pets/frogbro.gif');
+const backgroundImage = require('./assets/backgrounds/beach.png');
+const bearClubImage = require('./assets/backgrounds/bearclub.png');
+const storeBackgroundImage = require('./assets/backgrounds/storebg.png');
+const heartIcon = require('./assets/icons/heart.png');
+const storeIcon = require('./assets/icons/store.png');
+const closeButtonIcon = require('./assets/icons/closebutton.png');
+const lockIcon = require('./assets/icons/lock.png');
+const musicIcon = require('./assets/icons/music.png');
+const musicMuteIcon = require('./assets/icons/musicmute.png');
+const soundIcon = require('./assets/icons/sound.png');
+const soundMuteIcon = require('./assets/icons/soundmute.png');
+const beachMusic = require('./assets/music/beach.wav');
+const bearClubMusic = require('./assets/music/bearclub.wav');
+const backgrounds = [backgroundImage];
+const takePictureIcon = require('./assets/icons/takePicture.png');
 
 export default function App() {
-  //setting the starting parameters for our variables
-  const [petHealth, setPetHealth] = useState(100); //pet health
-  const healthBarWidth = useRef(new Animated.Value(100)).current; //healthbar width (animated for the smooth transitions)
-  const [storeFadeAnim] = useState(new Animated.Value(1)); //just a parameter for fading the store background
-  const [showNewScreen, setShowNewScreen] = useState(false);
-  const [goldCoins, setGoldCoins] = useState(0);
+  // STATE MANAGEMENT
+  // Health Bar
+  const [petHealth, setPetHealth] = useState(100);
+  const healthBarWidth = useRef(new Animated.Value(100)).current;
+  // Fade Animations
+  const [cameraFadeAnim] = useState(new Animated.Value(1));
+  const [storeFadeAnim] = useState(new Animated.Value(1));
+  const [backgroundFadeAnim] = useState(new Animated.Value(1));
+  // Screen Renders
+  const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
+  const [showCameraScreen, setShowCameraScreen] = useState(false);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
-  const [backgroundFadeAnim] = useState(new Animated.Value(1)); // New animation value for background fade
-  const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false); // State to track if bearclub is unlocked
-  const [sound, setSound] = useState(null); // State to hold the current sound object
-  const [menuVisible, setMenuVisible] = useState(false); // State to track if menu is visible
-  const [musicEnabled, setMusicEnabled] = useState(true); // State to track if music is enabled
-  const [soundEnabled, setSoundEnabled] = useState(true); // State to track if sound is enabled
+  // Currency
+  const [goldCoins, setGoldCoins] = useState(0);
+  // Item Unlocks
+  const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  // Utility
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [sound, setSound] = useState(null);
+  // Camera
+  const [facing, setFacing] = useState('back');
+  const [permission, requestPermission] = useCameraPermissions();
+  // Camera Storage
+  const [capturedImage, setCapturedImage] = useState(null);
+  const cameraRef = useRef(null);
 
+  // Health decrease logic
   useEffect(() => {
     const interval = setInterval(() => {
       const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
@@ -48,9 +69,10 @@ export default function App() {
       animateHealthBar(newHealth);
     }, 2000);
 
-    return () => clearInterval(interval); // Clear the interval when the component is unmounted
+    return () => clearInterval(interval);
   }, [petHealth]);
 
+  // Play background music on background change
   useEffect(() => {
     playBackgroundMusic();
     return () => {
@@ -60,17 +82,30 @@ export default function App() {
     };
   }, [backgroundIndex]);
 
+  // Feed pet handler
   const handleFeedPet = () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
-    setPetHealth(newHealth);
-    setGoldCoins(goldCoins + 10);
-    animateHealthBar(newHealth);
+    Animated.timing(cameraFadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+    setShowCameraScreen(true);
   };
 
+  // Menu visibility toggle
   const handleMenuPress = () => {
     setMenuVisible(!menuVisible);
   };
 
+  //manualTest for adding gold
+  const manualTestAddGold = () => {
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    setPetHealth(newHealth);
+    setGoldCoins(goldCoins + 10);
+    animateHealthBar(newHealth);
+  }
+
+  // Toggle Music
   const toggleMusic = async () => {
     setMusicEnabled(!musicEnabled);
     if (sound) {
@@ -82,10 +117,12 @@ export default function App() {
     }
   };
 
+  // Toggle Sound
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
   };
 
+  // Animate Health Bar
   const animateHealthBar = (health) => {
     Animated.timing(healthBarWidth, {
       toValue: health,
@@ -94,6 +131,7 @@ export default function App() {
     }).start();
   };
 
+  // Open Store Animation
   const openStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -109,6 +147,7 @@ export default function App() {
     });
   };
 
+  // Close Store Animation
   const closeStore = () => {
     Animated.timing(storeFadeAnim, {
       toValue: 0,
@@ -124,6 +163,37 @@ export default function App() {
     });
   };
 
+  // Close Camera Animation
+  const closeCamera = () => {
+    Animated.timing(cameraFadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowCameraScreen(false);
+      Animated.timing(cameraFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    });
+
+    
+  // Take Picture Button Functionality
+  };
+  const takePicture = async () => {
+    try {
+      if (cameraRef.current) {
+        const photo = await cameraRef.current.takePictureAsync();
+        setCapturedImage(photo.uri);
+        setShowCameraScreen(false);
+      }
+    } catch (error) {
+      console.error("Error taking picture: ", error);
+    }
+  };
+      
+  // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
       return 'Frogbro is hungry! Feed me!';
@@ -134,10 +204,10 @@ export default function App() {
     }
   };
 
+  // Swipe gesture for background change
   const handleGesture = ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
       if (nativeEvent.translationX > 50) {
-        // Swiped right
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -145,7 +215,7 @@ export default function App() {
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
             if (prevIndex === 1 && !isBearClubUnlocked) {
-              return 0; // Prevent swiping to bearclub if locked
+              return 0;
             }
             return (prevIndex - 1 + backgrounds.length) % backgrounds.length;
           });
@@ -156,7 +226,6 @@ export default function App() {
           }).start();
         });
       } else if (nativeEvent.translationX < -50) {
-        // Swiped left
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -164,7 +233,7 @@ export default function App() {
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
             if (prevIndex === 0 && !isBearClubUnlocked) {
-              return 0; // Prevent swiping to bearclub if locked
+              return 0;
             }
             return (prevIndex + 1) % backgrounds.length;
           });
@@ -178,14 +247,7 @@ export default function App() {
     }
   };
 
-  const unlockBearClub = () => {
-    if (goldCoins >= 100) {
-      setGoldCoins(goldCoins - 100);
-      setIsBearClubUnlocked(true);
-      backgrounds.push(bearClubImage); // Add bearclub to backgrounds
-    }
-  };
-
+  // Play background music based on background index
   const playBackgroundMusic = async () => {
     try {
       if (sound) {
@@ -207,6 +269,36 @@ export default function App() {
     }
   };
 
+  // Handle camera permissions
+  if (!permission) {
+    return <View />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
+        <Button onPress={requestPermission} title="grant permission" />
+      </View>
+    );
+  }
+
+  // Toggle camera facing
+  function toggleCameraFacing() {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  }
+
+  // ITEM UNLOCKS
+  // Unlock Bear Club
+  const unlockBearClub = () => {
+    if (goldCoins >= 100) {
+      setGoldCoins(goldCoins - 100);
+      setIsBearClubUnlocked(true);
+      backgrounds.push(bearClubImage);
+    }
+  };
+
+  // Main screen rendering
   const renderMainScreen = () => (
     <View style={styles.container}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
@@ -251,11 +343,17 @@ export default function App() {
           <TouchableOpacity onPress={toggleSound}>
             <ExpoImage source={soundEnabled ? soundIcon : soundMuteIcon} style={styles.menuIcon} />
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuButton} onPress={manualTestAddGold}>
+              <Text style={styles.buttonText}>add gold</Text>
+            </TouchableOpacity>
+
         </View>
       )}
     </View>
   );
 
+  // Store screen rendering
   const renderStoreScreen = () => (
     <Animated.View style={[styles.newScreenContainer, { opacity: storeFadeAnim }]}>
       <ExpoImage source={storeBackgroundImage} style={styles.newBackground} />
@@ -297,6 +395,55 @@ export default function App() {
     </Animated.View>
   );
 
+  // Camera screen rendering
+  const renderCameraScreen = () => (
+    <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
+      <CameraView
+        style={styles.cameraView}
+        ref={cameraRef}
+        facing={facing}
+      >
+        <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
+          <Text style={styles.text}>Flip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.closeButton} onPress={closeCamera}>
+          <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.takePicture} onPress={takePicture}>
+          <ExpoImage source={takePictureIcon} style={styles.takePictureButton} />
+        </TouchableOpacity>
+      </CameraView>
+    </Animated.View>
+  );
+  
+  // Render Picture Preview Dialogue
+  const renderPicturePreview = () => (
+    <View style={styles.picturePreviewContainer}>
+      <ExpoImage source={{ uri: capturedImage }} style={styles.capturedImage} />
+      <TouchableOpacity style={styles.closeButton} onPress={() => {
+        setCapturedImage(null);
+        setShowCameraScreen(true);
+      }}>
+        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.analyseButton} onPress={handleAnalysePicture}>
+        <Text style={styles.buttonText}>Analyse</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Analyse Picture Feature (to add send to API)
+  const handleAnalysePicture = async () => {
+    const filename = capturedImage.split('/').pop();
+    const newPath = `${FileSystem.documentDirectory}${filename}`;
+    await FileSystem.moveAsync({
+      from: capturedImage,
+      to: newPath,
+    });
+    setCapturedImage(null);
+  };
+
+  // Health Bar Animations
   const animatedWidth = healthBarWidth.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
@@ -307,15 +454,18 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
+  // App Structure (With Gesture Handler as the base)
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
-        {showNewScreen ? renderStoreScreen() : renderMainScreen()}
+        {capturedImage ? renderPicturePreview() : (showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen()))}
       </Animated.View>
     </GestureHandlerRootView>
   );
+  
 }
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -400,7 +550,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginBottom: 100, // Adjust this value to move the pet higher
+    marginBottom: 100,
   },
   pet: {
     width: 150,
@@ -426,14 +576,14 @@ const styles = StyleSheet.create({
     right: 20,
     width: 100,
     height: 40,
-    backgroundColor: '#fff', // Blue color for the menu button
+    backgroundColor: '#fff',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   menuContainer: {
     position: 'absolute',
-    top: 200, // Position it just below the menu button
+    top: 200,
     right: 20,
     backgroundColor: 'white',
     borderRadius: 10,
@@ -441,7 +591,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: 150,
-    zIndex: 10, // Make sure the menu is on top
+    zIndex: 10,
+  },
+  flipButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 70,
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flipButtonContainer: {
+    position: 'absolute',
+    top: 200,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: 150,
+    zIndex: 10,
   },
   menuIcon: {
     width: 40,
@@ -456,7 +629,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    resizeMode: 'cover', // Ensure the background image fits the screen
+    resizeMode: 'cover',
   },
   headerContainer: {
     position: 'absolute',
@@ -476,7 +649,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   closeButtonIcon: {
-    width: 70, // Increased size of the close button
+    width: 70,
     height: 70,
   },
   storeItemsContainer: {
@@ -536,5 +709,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-});
+  cameraContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  cameraView: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#ccc',
+  },
+  takePicture: {
+    position: 'absolute',
+    alignSelf: 'center',
+    // alignItems: 'center',
+    bottom: 250,
+  },
+  takePictureButton: {
+    width: 370,
+    height: 370,
+  },
+  picturePreviewContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  capturedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  analyseButton: {
+    position: 'absolute',
+    bottom: 40,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 25,
+    width: 150,
+    alignItems: 'center',
+  },
 
+});
