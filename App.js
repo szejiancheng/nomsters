@@ -71,29 +71,27 @@ export default function App() {
     if (inventoryVisible) {
       Animated.timing(inventorySlideAnim, {
         toValue: 0,
-        duration: 700, // Increased duration for slower animation
+        duration: 700,
         useNativeDriver: true,
       }).start();
       Animated.timing(mainScreenSlideAnim, {
-        toValue: -Dimensions.get('window').height * 0.5, // Adjusted to show part of the main screen
-        duration: 700, // Increased duration for slower animation
+        toValue: -Dimensions.get('window').height * 0.5,
+        duration: 700, 
         useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(inventorySlideAnim, {
         toValue: Dimensions.get('window').height,
-        duration: 700, // Increased duration for slower animation
+        duration: 700, 
         useNativeDriver: true,
       }).start();
       Animated.timing(mainScreenSlideAnim, {
         toValue: 0,
-        duration: 700, // Increased duration for slower animation
+        duration: 700, 
         useNativeDriver: true,
       }).start();
     }
   }, [inventoryVisible]);
-    
-  
   
   // Health decrease logic
   useEffect(() => {
@@ -247,6 +245,7 @@ export default function App() {
   const handleGesture = ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
       if (nativeEvent.translationX > 50) {
+        // Handle swipe right
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -265,6 +264,7 @@ export default function App() {
           }).start();
         });
       } else if (nativeEvent.translationX < -50) {
+        // Handle swipe left
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
@@ -282,6 +282,21 @@ export default function App() {
             useNativeDriver: true,
           }).start();
         });
+      } else if (nativeEvent.translationY < -50) {
+        // Handle swipe up
+        setInventoryVisible(true);
+        setShowInventoryScreen(true);
+      }
+    }
+  };
+
+  // custom inventory gesture that if you swipe down while in inventory it will close inventory
+  const handleInventoryGesture = ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationY > 50) {
+        // Handle swipe down to close inventory
+        setInventoryVisible(false);
+        setShowInventoryScreen(false);
       }
     }
   };
@@ -495,17 +510,19 @@ export default function App() {
 
   // Inventory screen rendering
   const renderInventoryScreen = () => (
-    <View style={styles.inventoryContainer}>
-      <TouchableOpacity style={styles.inventoryCloseButton} onPress={handlePetPress}>
-        <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-      </TouchableOpacity>
-      <Text style={styles.inventoryTitle}>Inventory</Text>
-      {/* Inventory items will be added here */}
-    </View>
+    <PanGestureHandler onHandlerStateChange={handleInventoryGesture}>
+      <Animated.View style={styles.inventoryContainer}>
+        <TouchableOpacity style={styles.inventoryCloseButton} onPress={handlePetPress}>
+          <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+        </TouchableOpacity>
+        <Text style={styles.inventoryTitle}>Inventory</Text>
+        {/* Inventory items will be added here */}
+      </Animated.View>
+    </PanGestureHandler>
   );
-  
 
-  // App Structure (With Gesture Handler as the base)
+
+// App Structure (With Gesture Handler as the base)
 return (
   <GestureHandlerRootView style={{ flex: 1 }}>
     <Animated.View style={{ flex: 1 }}>
@@ -522,7 +539,6 @@ return (
     </Animated.View>
   </GestureHandlerRootView>
 );
-
 
 }
 
