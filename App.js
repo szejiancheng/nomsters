@@ -6,13 +6,14 @@
 
 // LIBRARY IMPORTS
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
@@ -37,6 +38,7 @@ export default function App() {
   // STATE MANAGEMENT
   // Health Bar
   const [petHealth, setPetHealth] = useState(100);
+  const [petName, setPetName] = useState('');
   const healthBarWidth = useRef(new Animated.Value(100)).current;
   // Fade Animations
   const [cameraFadeAnim] = useState(new Animated.Value(1));
@@ -63,6 +65,8 @@ export default function App() {
   // Camera Storage
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
+  // Modal
+  const [newPetName, setNewPetName] = useState('');
 
   // Inventory Slide Animation
   const [inventorySlideAnim] = useState(new Animated.Value(Dimensions.get('window').height));
@@ -115,6 +119,48 @@ export default function App() {
     };
   }, [backgroundIndex]);
 
+  useEffect(() => {
+  }, []);
+
+  const initializeUserData = async () => {
+    try {
+        const initialData = {
+          petName: '',
+          goldCoins: 0,
+          petHealth: 100,
+          pictures: [],
+        };
+  const updateUserData = async (newData) => {
+    try {
+      await AsyncStorage.setItem('userData', JSON.stringify(newData));
+    } catch (error) {
+      console.error('Error updating user data:', error);
+    }
+  };
+    }
+  };
+
+  // Handle pet name submission
+  const handleSetPetName = async () => {
+    if (newPetName.trim() === '') return;
+
+    const userData = await getUserData();
+    if (userData) {
+      userData.petName = newPetName;
+      await updateUserData(userData);
+      setPetName(newPetName);
+      setIsDialogVisible(false);
+    }
+  };
+
+  // manualTest for adding gold
+  const manualTestAddGold = async () => {
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    setPetHealth(newHealth);
+    await addGold(10);
+    animateHealthBar(newHealth);
+  };
+
   // Feed pet handler
   const handleFeedPet = () => {
     Animated.timing(cameraFadeAnim, {
@@ -136,12 +182,9 @@ export default function App() {
     setShowInventoryScreen(!showInventoryScreen);
   };
 
-  // manualTest for adding gold
-  const manualTestAddGold = () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
-    setPetHealth(newHealth);
-    setGoldCoins(goldCoins + 10);
-    animateHealthBar(newHealth);
+  // Handle rename pet
+  const handleRenamePet = () => {
+    setIsDialogVisible(true);
   };
 
   // Toggle Music
@@ -234,11 +277,11 @@ export default function App() {
   // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
-      return 'Frogbro is hungry! Feed me!';
+      return `${petName} is hungry! Feed me!`;
     } else if (petHealth < 70) {
-      return 'Frogbro is a little hungry :>';
+      return `${petName} is a little hungry :>`;
     } else {
-      return 'Frogbro is full and loves you <3';
+      return `${petName} is full and loves you <3`;
     }
   };
 
@@ -409,8 +452,11 @@ export default function App() {
           <TouchableOpacity onPress={toggleSound}>
             <ExpoImage source={soundEnabled ? soundIcon : soundMuteIcon} style={styles.menuIcon} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuButton} onPress={manualTestAddGold}>
+          <TouchableOpacity style={styles.manualTestAddGoldButton} onPress={manualTestAddGold}>
             <Text style={styles.buttonText}>add gold</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.renameButton} onPress={handleRenamePet}>
+            <Text style={styles.buttonText}>rename</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -518,7 +564,6 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
-
   // Inventory screen rendering
   const renderInventoryScreen = () => (
     <PanGestureHandler onHandlerStateChange={handleInventoryGesture}>
@@ -546,27 +591,43 @@ export default function App() {
     </PanGestureHandler>
   );
 
+  // App Structure (With Gesture Handler as the base)
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Animated.View style={{ flex: 1 }}>
+        {capturedImage ? renderPicturePreview() : (
+          <>
+            <Animated.View style={{ flex: 1, transform: [{ translateY: mainScreenSlideAnim }] }}>
+              {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
+            </Animated.View>
+            <Animated.View style={[styles.inventoryOverlay, { transform: [{ translateY: inventorySlideAnim }] }]}>
+              {renderInventoryScreen()}
+            </Animated.View>
+          </>
+        )}
+      </Animated.View>
 
-
-
-// App Structure (With Gesture Handler as the base)
-return (
-  <GestureHandlerRootView style={{ flex: 1 }}>
-    <Animated.View style={{ flex: 1 }}>
-      {capturedImage ? renderPicturePreview() : (
-        <>
-          <Animated.View style={{ flex: 1, transform: [{ translateY: mainScreenSlideAnim }] }}>
-            {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
-          </Animated.View>
-          <Animated.View style={[styles.inventoryOverlay, { transform: [{ translateY: inventorySlideAnim }] }]}>
-            {renderInventoryScreen()}
-          </Animated.View>
-        </>
-      )}
-    </Animated.View>
-  </GestureHandlerRootView>
-);
-
+      <Modal
+        visible={isDialogVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsDialogVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Your Pet's Name</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter pet name"
+              value={newPetName}
+              onChangeText={setNewPetName}
+            />
+            <Button title="Submit" onPress={handleSetPetName} />
+          </View>
+        </View>
+      </Modal>
+    </GestureHandlerRootView>
+  );
 }
 
 // Styles
@@ -685,36 +746,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuContainer: {
+  renameButton: {
     position: 'absolute',
-    top: 200,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: 150,
-    zIndex: 10,
-  },
-  flipButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 70,
-    height: 50,
+    top: 80,
+    right: 0,
+    width: 100,
+    height: 40,
     backgroundColor: '#fff',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flipButtonContainer: {
+
+  manualTestAddGoldButton: {
     position: 'absolute',
-    top: 200,
+    top: 130,
+    right: 0,
+    width: 100,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  menuContainer: {
+    position: 'absolute',
+    top: 170,
     right: 20,
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: 150,
@@ -918,6 +980,30 @@ const styles = StyleSheet.create({
     height: 600,
     borderRadius: 10,
   },
-  
-});
 
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  textInput: {
+    width: '100%',
+    padding: 10,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 20,
+    borderRadius: 5,
+  },
+});
