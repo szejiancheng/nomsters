@@ -66,6 +66,7 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
   // Modal
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [newPetName, setNewPetName] = useState('');
 
   // Inventory Slide Animation
@@ -120,16 +121,46 @@ export default function App() {
   }, [backgroundIndex]);
 
   useEffect(() => {
+    initializeUserData();
   }, []);
 
+  // Initialize user data
   const initializeUserData = async () => {
     try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData === null) {
         const initialData = {
           petName: '',
           goldCoins: 0,
           petHealth: 100,
           pictures: [],
         };
+        await AsyncStorage.setItem('userData', JSON.stringify(initialData));
+        setIsDialogVisible(true);
+      } else {
+        const data = JSON.parse(userData);
+        setPetName(data.petName);
+        setGoldCoins(data.goldCoins);
+        if (data.petName.trim() === '') {
+          setIsDialogVisible(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing user data:', error);
+    }
+  };
+
+  // Get user data
+  const getUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Error retrieving user data:', error);
+    }
+  };
+
+  // Update user data
   const updateUserData = async (newData) => {
     try {
       await AsyncStorage.setItem('userData', JSON.stringify(newData));
@@ -137,6 +168,14 @@ export default function App() {
       console.error('Error updating user data:', error);
     }
   };
+
+  // Add gold function
+  const addGold = async (amount) => {
+    const userData = await getUserData();
+    if (userData) {
+      userData.goldCoins += amount;
+      await updateUserData(userData);
+      setGoldCoins(userData.goldCoins);
     }
   };
 
