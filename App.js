@@ -1,24 +1,19 @@
-// NOTE TO ALL DEVS:
-//manualAddGold is a function just for UI testing. Since we replaced FEED with the camera utility, 
-//this will be the temporary gold adding button for testing, mainly for shop UI. I can't add comments where they are specifically
-//because the react UI coding doesn't allow for comments in that section, so we need to, before any demos are released, remove the button and the function
-// use ctrl+f to find anything with the word 'manualTest' to delete them later on, when the gold system is added
-
-// LIBRARY IMPORTS
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
 const bearClubImage = require('./assets/backgrounds/bearclub.png');
 const storeBackgroundImage = require('./assets/backgrounds/storebg.png');
+const inventoryBackgroundImage = require('./assets/backgrounds/inventory.png');
 const heartIcon = require('./assets/icons/heart.png');
 const storeIcon = require('./assets/icons/store.png');
 const closeButtonIcon = require('./assets/icons/closebutton.png');
@@ -29,13 +24,78 @@ const soundIcon = require('./assets/icons/sound.png');
 const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
-const backgrounds = [backgroundImage];
 const takePictureIcon = require('./assets/icons/takePicture.png');
+
+const allBackgrounds = [backgroundImage, bearClubImage];
+
+const USER_DATA_KEY = 'userData';
+
+// Utility Functions for AsyncStorage Interactions
+const getUserData = async () => {
+  try {
+    const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+    return userData ? JSON.parse(userData) : null;
+  } catch (error) {
+    console.error('Error retrieving user data:', error);
+  }
+};
+
+const updateUserData = async (newData) => {
+  try {
+    await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(newData));
+  } catch (error) {
+    console.error('Error updating user data:', error);
+  }
+};
+
+const addGold = async (amount) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.goldCoins += amount;
+    await updateUserData(userData);
+  }
+};
+
+const deductGold = async (amount) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.goldCoins -= amount;
+    await updateUserData(userData);
+  }
+};
+
+const unlockItem = async (itemKey) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.purchasedItems = {
+      ...userData.purchasedItems,
+      [itemKey]: true,
+    };
+    await updateUserData(userData);
+  }
+};
+
+const isItemUnlocked = async (itemKey) => {
+  const userData = await getUserData();
+  return userData && userData.purchasedItems[itemKey];
+};
+
+// Purchase Function
+const purchaseItem = async (itemKey, cost) => {
+  const userData = await getUserData();
+  if (userData && userData.goldCoins >= cost) {
+    await deductGold(cost);
+    await unlockItem(itemKey);
+    return userData.goldCoins - cost;
+  }
+  return null;
+};
 
 export default function App() {
   // STATE MANAGEMENT
   // Health Bar
   const [petHealth, setPetHealth] = useState(100);
+  const [petName, setPetName] = useState('');
   const healthBarWidth = useRef(new Animated.Value(100)).current;
   // Fade Animations
   const [cameraFadeAnim] = useState(new Animated.Value(1));
@@ -44,30 +104,67 @@ export default function App() {
   // Screen Renders
   const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
   const [showCameraScreen, setShowCameraScreen] = useState(false);
+  const [showInventoryScreen, setShowInventoryScreen] = useState(false);
   const [backgroundIndex, setBackgroundIndex] = useState(0);
   // Currency
   const [goldCoins, setGoldCoins] = useState(0);
   // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sound, setSound] = useState(null);
+  const [inventoryVisible, setInventoryVisible] = useState(false);
+  const [inventoryContent, setInventoryContent] = useState(''); // Added state for inventory content
   // Camera
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
   // Camera Storage
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
+  // Modal
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [newPetName, setNewPetName] = useState('');
 
+  // Inventory Slide Animation
+  const [inventorySlideAnim] = useState(new Animated.Value(Dimensions.get('window').height));
+  const [mainScreenSlideAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (inventoryVisible) {
+      Animated.timing(inventorySlideAnim, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(mainScreenSlideAnim, {
+        toValue: -Dimensions.get('window').height * 0.5,
+        duration: 700, 
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(inventorySlideAnim, {
+        toValue: Dimensions.get('window').height,
+        duration: 700, 
+        useNativeDriver: true,
+      }).start();
+      Animated.timing(mainScreenSlideAnim, {
+        toValue: 0,
+        duration: 700, 
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [inventoryVisible]);
+  
   // Health decrease logic
   useEffect(() => {
     const interval = setInterval(() => {
       const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
       setPetHealth(newHealth);
       animateHealthBar(newHealth);
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [petHealth]);
@@ -81,6 +178,78 @@ export default function App() {
       }
     };
   }, [backgroundIndex]);
+
+  useEffect(() => {
+    initializeUserData();
+  }, []);
+
+  // Initialize user data
+  const initializeUserData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      if (userData === null) {
+        const initialData = {
+          petName: '',
+          goldCoins: 0,
+          petHealth: 100,
+          pictures: [],
+          purchasedItems: {}
+        };
+        await AsyncStorage.setItem('userData', JSON.stringify(initialData));
+        setIsDialogVisible(true);
+      } else {
+        const data = JSON.parse(userData);
+        setPetName(data.petName);
+        setGoldCoins(data.goldCoins);
+        setPurchasedItems(data.purchasedItems || {});
+        setIsBearClubUnlocked(data.purchasedItems?.bearClub || false);
+        if (data.petName.trim() === '') {
+          setIsDialogVisible(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing user data:', error);
+    }
+  };
+
+  // Handle pet name submission
+  const handleSetPetName = async () => {
+    if (newPetName.trim() === '') return;
+
+    const userData = await getUserData();
+    if (userData) {
+      userData.petName = newPetName;
+      await updateUserData(userData);
+      setPetName(newPetName);
+      setIsDialogVisible(false);
+    }
+  };
+
+  // manualTest for clearing user data
+  const manualTestClearUserData = async () => {
+    try {
+      await AsyncStorage.clear();
+      await initializeUserData();
+      setGoldCoins(0); // Reset goldCoins state after clearing data
+      setPetHealth(100); // Reset petHealth state after clearing data
+      setInventoryContent(''); // Reset inventoryContent state after clearing data
+      setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
+      setPurchasedItems({}); // Reset purchasedItems state after clearing data
+      setPetName(''); // Reset petName state after clearing data
+      setIsDialogVisible(true); // Show dialog to set pet name after clearing data
+    } catch (error) {
+      console.error('Error clearing user data:', error);
+    }
+  };
+
+  // manualTest for adding gold
+  const manualTestAddGold = async () => {
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    setPetHealth(newHealth);
+    await addGold(10);
+    setGoldCoins(prevGold => prevGold + 10); // Update state to reflect gold addition
+    animateHealthBar(newHealth);
+  };
 
   // Feed pet handler
   const handleFeedPet = () => {
@@ -97,13 +266,16 @@ export default function App() {
     setMenuVisible(!menuVisible);
   };
 
-  //manualTest for adding gold
-  const manualTestAddGold = () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
-    setPetHealth(newHealth);
-    setGoldCoins(goldCoins + 10);
-    animateHealthBar(newHealth);
-  }
+  // Tap pet open inventory
+  const handlePetPress = () => {
+    setInventoryVisible(!inventoryVisible);
+    setShowInventoryScreen(!showInventoryScreen);
+  };
+
+  // Handle rename pet
+  const handleRenamePet = () => {
+    setIsDialogVisible(true);
+  };
 
   // Toggle Music
   const toggleMusic = async () => {
@@ -177,10 +349,9 @@ export default function App() {
         useNativeDriver: true,
       }).start();
     });
-
-    
-  // Take Picture Button Functionality
   };
+
+  // Take Picture Button Functionality
   const takePicture = async () => {
     try {
       if (cameraRef.current) {
@@ -192,32 +363,37 @@ export default function App() {
       console.error("Error taking picture: ", error);
     }
   };
-      
+
   // Health message based on pet health
   const getHealthMessage = () => {
     if (petHealth < 30) {
-      return 'Frogbro is hungry! Feed me!';
+      return `${petName} is hungry! Feed me!`;
     } else if (petHealth < 70) {
-      return 'Frogbro is a little hungry :>';
+      return `${petName} is a little hungry :>`;
     } else {
-      return 'Frogbro is full and loves you <3';
+      return `${petName} is full and loves you <3`;
     }
   };
 
   // Swipe gesture for background change
-  const handleGesture = ({ nativeEvent }) => {
+  const handleGesture = async ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
+      const userData = await getUserData();
+      const unlockedBackgrounds = [backgroundImage];
+      if (userData?.purchasedItems?.bearClub) {
+        unlockedBackgrounds.push(bearClubImage);
+      }
+
       if (nativeEvent.translationX > 50) {
+        // Handle swipe right
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
-            if (prevIndex === 1 && !isBearClubUnlocked) {
-              return 0;
-            }
-            return (prevIndex - 1 + backgrounds.length) % backgrounds.length;
+            const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+            return newIndex;
           });
           Animated.timing(backgroundFadeAnim, {
             toValue: 1,
@@ -226,16 +402,15 @@ export default function App() {
           }).start();
         });
       } else if (nativeEvent.translationX < -50) {
+        // Handle swipe left
         Animated.timing(backgroundFadeAnim, {
           toValue: 0,
           duration: 300,
           useNativeDriver: true,
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
-            if (prevIndex === 0 && !isBearClubUnlocked) {
-              return 0;
-            }
-            return (prevIndex + 1) % backgrounds.length;
+            const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
+            return newIndex;
           });
           Animated.timing(backgroundFadeAnim, {
             toValue: 1,
@@ -243,8 +418,52 @@ export default function App() {
             useNativeDriver: true,
           }).start();
         });
+      } else if (nativeEvent.translationY < -50) {
+        // Handle swipe up
+        setInventoryVisible(true);
+        setShowInventoryScreen(true);
       }
     }
+  };
+
+  // custom inventory gesture that if you swipe down while in inventory it will close inventory
+  const handleInventoryGesture = ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationY > 50) {
+        // Handle swipe down to close inventory
+        setInventoryVisible(false);
+        setShowInventoryScreen(false);
+        setInventoryContent(''); // Clear inventory content
+      }
+    }
+  };
+
+  const handleInventoryPetsPress = () => {
+    // Handle Pets inventory content here
+  };
+
+  const handleInventoryItemsPress = () => {
+    // Handle Items inventory content here
+  };
+
+  const handleInventoryBackgroundsPress = async () => {
+    const userData = await getUserData();
+    const unlockedBackgrounds = [backgroundImage];
+    if (userData?.purchasedItems?.bearClub) {
+      unlockedBackgrounds.push(bearClubImage);
+    }
+    setInventoryContent(
+      <>
+        {unlockedBackgrounds.map((bg, index) => (
+          <TouchableOpacity key={index} onPress={() => setBackgroundIndex(index)}>
+            <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </>
+    );
   };
 
   // Play background music based on background index
@@ -288,23 +507,13 @@ export default function App() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
 
-  // ITEM UNLOCKS
-  // Unlock Bear Club
-  const unlockBearClub = () => {
-    if (goldCoins >= 100) {
-      setGoldCoins(goldCoins - 100);
-      setIsBearClubUnlocked(true);
-      backgrounds.push(bearClubImage);
-    }
-  };
-
   // Main screen rendering
   const renderMainScreen = () => (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { transform: [{ translateY: mainScreenSlideAnim }] }]}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <Animated.View style={styles.container}>
           <Animated.View style={{ ...styles.backgroundContainer, opacity: backgroundFadeAnim }}>
-            <ExpoImage source={backgrounds[backgroundIndex]} style={styles.background} />
+            <ExpoImage source={allBackgrounds[backgroundIndex]} style={styles.background} />
           </Animated.View>
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
             <ExpoImage source={storeIcon} style={styles.storeIcon} />
@@ -324,7 +533,9 @@ export default function App() {
             <Text style={styles.goldText}>{goldCoins} Gold</Text>
           </View>
           <View style={styles.content}>
-            <ExpoImage source={petGif} style={styles.pet} />
+            <TouchableOpacity onPress={handlePetPress}>
+              <ExpoImage source={petGif} style={styles.pet} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.button} onPress={handleFeedPet}>
               <Text style={styles.buttonText}>FEED</Text>
             </TouchableOpacity>
@@ -343,14 +554,18 @@ export default function App() {
           <TouchableOpacity onPress={toggleSound}>
             <ExpoImage source={soundEnabled ? soundIcon : soundMuteIcon} style={styles.menuIcon} />
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuButton} onPress={manualTestAddGold}>
-              <Text style={styles.buttonText}>add gold</Text>
-            </TouchableOpacity>
-
+          <TouchableOpacity style={styles.manualTestAddGoldButton} onPress={manualTestAddGold}>
+            <Text style={styles.buttonText}>add gold</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.renameButton} onPress={handleRenamePet}>
+            <Text style={styles.buttonText}>rename</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.manualTestClearUserDataButton} onPress={manualTestClearUserData}>
+            <Text style={styles.buttonText}>clear data</Text>
+          </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   // Store screen rendering
@@ -367,33 +582,56 @@ export default function App() {
         <Text style={styles.goldText}>{goldCoins} Gold</Text>
       </View>
       <View style={styles.storeItemsContainer}>
-        <View style={styles.storeItem}>
-          <Text style={styles.storeItemName}>Bear Club</Text>
-          <TouchableOpacity style={styles.itemContainer} onPress={unlockBearClub} disabled={isBearClubUnlocked || goldCoins < 100}>
-            <ExpoImage
-              source={bearClubImage}
-              style={isBearClubUnlocked ? styles.bearClubImage : styles.greyedBearClubImage}
-            />
-            {!isBearClubUnlocked && (
-              <TouchableOpacity style={styles.lockIconContainer} onPress={unlockBearClub}>
-                <ExpoImage source={lockIcon} style={styles.lockIcon} />
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.storeItemPrice}>
-            {isBearClubUnlocked ? 'Purchased!' : '100 Gold'}
-          </Text>
-        </View>
-        {Array.from({ length: 5 }).map((_, index) => (
+        {storeItems.map((item, index) => (
           <View key={index} style={styles.storeItem}>
-            <Text style={styles.storeItemName}></Text>
-            <View style={styles.itemContainer}></View>
-            <Text style={styles.storeItemPrice}></Text>
+            <Text style={styles.storeItemName}>{item.name}</Text>
+            <TouchableOpacity
+              style={styles.itemContainer}
+              onPress={() => handlePurchaseItem(item.key, item.cost)}
+              disabled={item.isUnlocked || goldCoins < item.cost}
+            >
+              <ExpoImage
+                source={item.image}
+                style={item.isUnlocked ? styles.itemImage : styles.greyedItemImage}
+              />
+              {!item.isUnlocked && (
+                <TouchableOpacity style={styles.lockIconContainer} onPress={() => handlePurchaseItem(item.key, item.cost)}>
+                  <ExpoImage source={lockIcon} style={styles.lockIcon} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.storeItemPrice}>
+              {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
+            </Text>
           </View>
         ))}
       </View>
     </Animated.View>
   );
+
+  // Store items configuration
+  const storeItems = [
+    {
+      key: 'bearClub',
+      name: 'Bear Club',
+      cost: 100,
+      image: bearClubImage,
+      isUnlocked: isBearClubUnlocked,
+    },
+    // Add more items here
+  ];
+
+  const handlePurchaseItem = async (itemKey, cost) => {
+    const remainingGold = await purchaseItem(itemKey, cost);
+    if (remainingGold !== null) {
+      setGoldCoins(remainingGold); // Update state to reflect gold deduction
+      // Update the local state based on the purchased item
+      if (itemKey === 'bearClub') {
+        setIsBearClubUnlocked(true);
+      }
+      // Update state for other items if necessary
+    }
+  };
 
   // Camera screen rendering
   const renderCameraScreen = () => (
@@ -415,7 +653,7 @@ export default function App() {
       </CameraView>
     </Animated.View>
   );
-  
+
   // Render Picture Preview Dialogue
   const renderPicturePreview = () => (
     <View style={styles.picturePreviewContainer}>
@@ -454,15 +692,75 @@ export default function App() {
     outputRange: ['red', 'orange', 'green'],
   });
 
+  // Inventory screen rendering
+  const renderInventoryScreen = () => (
+    <PanGestureHandler onHandlerStateChange={handleInventoryGesture}>
+      <Animated.View style={styles.backgroundContainer}>
+        <ExpoImage source={inventoryBackgroundImage} style={styles.background} />
+        <TouchableOpacity style={styles.inventoryCloseButton} onPress={handlePetPress}>
+          <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+        </TouchableOpacity>
+        <View style={styles.inventoryHeaderContainer}>
+          <Text style={styles.inventoryTitle}>Inventory</Text>
+        </View>
+        <View style={styles.inventoryButtonContainer}>
+          {inventoryContent ? (
+            inventoryContent
+          ) : (
+            <>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryPetsPress}>
+                <Text style={styles.inventoryText}>Pets</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryItemsPress}>
+                <Text style={styles.inventoryText}>Items</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryBackgroundsPress}>
+                <Text style={styles.inventoryText}>Backgrounds</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </Animated.View>
+    </PanGestureHandler>
+  );
+
   // App Structure (With Gesture Handler as the base)
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
-        {capturedImage ? renderPicturePreview() : (showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen()))}
+        {capturedImage ? renderPicturePreview() : (
+          <>
+            <Animated.View style={{ flex: 1, transform: [{ translateY: mainScreenSlideAnim }] }}>
+              {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}
+            </Animated.View>
+            <Animated.View style={[styles.inventoryOverlay, { transform: [{ translateY: inventorySlideAnim }] }]}>
+              {renderInventoryScreen()}
+            </Animated.View>
+          </>
+        )}
       </Animated.View>
+
+      <Modal
+        visible={isDialogVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsDialogVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Your Pet's Name</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter pet name"
+              value={newPetName}
+              onChangeText={setNewPetName}
+            />
+            <Button title="Submit" onPress={handleSetPetName} />
+          </View>
+        </View>
+      </Modal>
     </GestureHandlerRootView>
   );
-  
 }
 
 // Styles
@@ -581,36 +879,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuContainer: {
+  renameButton: {
     position: 'absolute',
-    top: 200,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: 150,
-    zIndex: 10,
-  },
-  flipButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 70,
-    height: 50,
+    top: 80,
+    right: 0,
+    width: 100,
+    height: 40,
     backgroundColor: '#fff',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flipButtonContainer: {
+
+  manualTestAddGoldButton: {
     position: 'absolute',
-    top: 200,
+    top: 130,
+    right: 0,
+    width: 100,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  manualTestClearUserDataButton: {
+    position: 'absolute',
+    top: 190,
+    right: 0,
+    width: 100,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  menuContainer: {
+    position: 'absolute',
+    top: 170,
     right: 20,
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: 150,
@@ -691,12 +1002,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
   },
-  bearClubImage: {
+  itemImage: {
     width: '100%',
     height: '100%',
     borderRadius: 10,
   },
-  greyedBearClubImage: {
+  greyedItemImage: {
     width: '100%',
     height: '100%',
     borderRadius: 10,
@@ -723,7 +1034,6 @@ const styles = StyleSheet.create({
   takePicture: {
     position: 'absolute',
     alignSelf: 'center',
-    // alignItems: 'center',
     bottom: 250,
   },
   takePictureButton: {
@@ -749,5 +1059,113 @@ const styles = StyleSheet.create({
     width: 150,
     alignItems: 'center',
   },
+  inventoryOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  inventoryContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'white',
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  inventoryTitle: {
+    fontSize: 50,
+    color: '#d3b683',
+    fontWeight: 'bold',
+    marginBottom: 20,
+    marginTop: 45,
+  },
+  inventoryCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 2,
+  },
+  inventoryHeaderContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: 20,
+  },  
 
+  inventoryText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    textAlign: 'center', 
+  },
+  
+  inventoryButtons: {
+    backgroundColor: '#d3c683',
+    padding: 20,
+    borderRadius: 25,
+    width: 200,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  
+  inventoryButtonContainer: {
+    flexDirection: 'column',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: 20,
+    width: '80%',
+    padding: 20,
+    height: 600,
+    borderRadius: 10,
+  },
+
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  textInput: {
+    width: '100%',
+    padding: 10,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 20,
+    borderRadius: 5,
+  },
+  backgroundThumbnail: { //inventory background icons
+    width: 200,
+    height: 200,
+    margin: 10,
+    borderRadius: 10,
+  },
+  backButton: {
+    backgroundColor: '#d3c683',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#000',
+  },
 });
