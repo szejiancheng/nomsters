@@ -86,9 +86,9 @@ const purchaseItem = async (itemKey, cost) => {
   if (userData && userData.goldCoins >= cost) {
     await deductGold(cost);
     await unlockItem(itemKey);
-    return true;
+    return userData.goldCoins - cost;
   }
-  return false;
+  return null;
 };
 
 export default function App() {
@@ -117,6 +117,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [sound, setSound] = useState(null);
   const [inventoryVisible, setInventoryVisible] = useState(false);
+  const [inventoryContent, setInventoryContent] = useState(''); // Added state for inventory content
   // Camera
   const [facing, setFacing] = useState('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -230,6 +231,12 @@ export default function App() {
       await AsyncStorage.clear();
       await initializeUserData();
       setGoldCoins(0); // Reset goldCoins state after clearing data
+      setPetHealth(100); // Reset petHealth state after clearing data
+      setInventoryContent(''); // Reset inventoryContent state after clearing data
+      setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
+      setPurchasedItems({}); // Reset purchasedItems state after clearing data
+      setPetName(''); // Reset petName state after clearing data
+      setIsDialogVisible(true); // Show dialog to set pet name after clearing data
     } catch (error) {
       console.error('Error clearing user data:', error);
     }
@@ -240,6 +247,7 @@ export default function App() {
     const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
     setPetHealth(newHealth);
     await addGold(10);
+    setGoldCoins(prevGold => prevGold + 10); // Update state to reflect gold addition
     animateHealthBar(newHealth);
   };
 
@@ -425,17 +433,37 @@ export default function App() {
         // Handle swipe down to close inventory
         setInventoryVisible(false);
         setShowInventoryScreen(false);
+        setInventoryContent(''); // Clear inventory content
       }
     }
   };
 
   const handleInventoryPetsPress = () => {
+    // Handle Pets inventory content here
   };
 
   const handleInventoryItemsPress = () => {
+    // Handle Items inventory content here
   };
 
-  const handleInventoryBackgroundsPress = () => {
+  const handleInventoryBackgroundsPress = async () => {
+    const userData = await getUserData();
+    const unlockedBackgrounds = [backgroundImage];
+    if (userData?.purchasedItems?.bearClub) {
+      unlockedBackgrounds.push(bearClubImage);
+    }
+    setInventoryContent(
+      <>
+        {unlockedBackgrounds.map((bg, index) => (
+          <TouchableOpacity key={index} onPress={() => setBackgroundIndex(index)}>
+            <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </>
+    );
   };
 
   // Play background music based on background index
@@ -594,8 +622,9 @@ export default function App() {
   ];
 
   const handlePurchaseItem = async (itemKey, cost) => {
-    const success = await purchaseItem(itemKey, cost);
-    if (success) {
+    const remainingGold = await purchaseItem(itemKey, cost);
+    if (remainingGold !== null) {
+      setGoldCoins(remainingGold); // Update state to reflect gold deduction
       // Update the local state based on the purchased item
       if (itemKey === 'bearClub') {
         setIsBearClubUnlocked(true);
@@ -675,17 +704,22 @@ export default function App() {
           <Text style={styles.inventoryTitle}>Inventory</Text>
         </View>
         <View style={styles.inventoryButtonContainer}>
-          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryPetsPress}>
-            <Text style={styles.inventoryText}>Pets</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryItemsPress}>
-            <Text style={styles.inventoryText}>Items</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryBackgroundsPress}>
-            <Text style={styles.inventoryText}>Backgrounds</Text>
-          </TouchableOpacity>
+          {inventoryContent ? (
+            inventoryContent
+          ) : (
+            <>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryPetsPress}>
+                <Text style={styles.inventoryText}>Pets</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryItemsPress}>
+                <Text style={styles.inventoryText}>Items</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.inventoryButtons} onPress={handleInventoryBackgroundsPress}>
+                <Text style={styles.inventoryText}>Backgrounds</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
-        {/* Inventory items will be added here */}
       </Animated.View>
     </PanGestureHandler>
   );
@@ -1116,5 +1150,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 20,
     borderRadius: 5,
+  },
+  backgroundThumbnail: { //inventory background icons
+    width: 200,
+    height: 200,
+    margin: 10,
+    borderRadius: 10,
+  },
+  backButton: {
+    backgroundColor: '#d3c683',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#000',
   },
 });
