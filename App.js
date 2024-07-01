@@ -1,10 +1,3 @@
-// NOTE TO ALL DEVS:
-//manualAddGold is a function just for UI testing. Since we replaced FEED with the camera utility, 
-//this will be the temporary gold adding button for testing, mainly for shop UI. I can't add comments where they are specifically
-//because the react UI coding doesn't allow for comments in that section, so we need to, before any demos are released, remove the button and the function
-// use ctrl+f to find anything with the word 'manualTest' to delete them later on, when the gold system is added
-
-// LIBRARY IMPORTS
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
@@ -31,8 +24,72 @@ const soundIcon = require('./assets/icons/sound.png');
 const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
-const backgrounds = [backgroundImage];
 const takePictureIcon = require('./assets/icons/takePicture.png');
+
+const allBackgrounds = [backgroundImage, bearClubImage];
+
+const USER_DATA_KEY = 'userData';
+
+// Utility Functions for AsyncStorage Interactions
+const getUserData = async () => {
+  try {
+    const userData = await AsyncStorage.getItem(USER_DATA_KEY);
+    return userData ? JSON.parse(userData) : null;
+  } catch (error) {
+    console.error('Error retrieving user data:', error);
+  }
+};
+
+const updateUserData = async (newData) => {
+  try {
+    await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(newData));
+  } catch (error) {
+    console.error('Error updating user data:', error);
+  }
+};
+
+const addGold = async (amount) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.goldCoins += amount;
+    await updateUserData(userData);
+  }
+};
+
+const deductGold = async (amount) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.goldCoins -= amount;
+    await updateUserData(userData);
+  }
+};
+
+const unlockItem = async (itemKey) => {
+  const userData = await getUserData();
+  if (userData) {
+    userData.purchasedItems = {
+      ...userData.purchasedItems,
+      [itemKey]: true,
+    };
+    await updateUserData(userData);
+  }
+};
+
+const isItemUnlocked = async (itemKey) => {
+  const userData = await getUserData();
+  return userData && userData.purchasedItems[itemKey];
+};
+
+// Purchase Function
+const purchaseItem = async (itemKey, cost) => {
+  const userData = await getUserData();
+  if (userData && userData.goldCoins >= cost) {
+    await deductGold(cost);
+    await unlockItem(itemKey);
+    return true;
+  }
+  return false;
+};
 
 export default function App() {
   // STATE MANAGEMENT
@@ -53,6 +110,7 @@ export default function App() {
   const [goldCoins, setGoldCoins] = useState(0);
   // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
   const [musicEnabled, setMusicEnabled] = useState(true);
@@ -105,7 +163,7 @@ export default function App() {
       const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
       setPetHealth(newHealth);
       animateHealthBar(newHealth);
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [petHealth]);
@@ -134,6 +192,7 @@ export default function App() {
           goldCoins: 0,
           petHealth: 100,
           pictures: [],
+          purchasedItems: {}
         };
         await AsyncStorage.setItem('userData', JSON.stringify(initialData));
         setIsDialogVisible(true);
@@ -141,41 +200,14 @@ export default function App() {
         const data = JSON.parse(userData);
         setPetName(data.petName);
         setGoldCoins(data.goldCoins);
+        setPurchasedItems(data.purchasedItems || {});
+        setIsBearClubUnlocked(data.purchasedItems?.bearClub || false);
         if (data.petName.trim() === '') {
           setIsDialogVisible(true);
         }
       }
     } catch (error) {
       console.error('Error initializing user data:', error);
-    }
-  };
-
-  // Get user data
-  const getUserData = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('userData');
-      return userData ? JSON.parse(userData) : null;
-    } catch (error) {
-      console.error('Error retrieving user data:', error);
-    }
-  };
-
-  // Update user data
-  const updateUserData = async (newData) => {
-    try {
-      await AsyncStorage.setItem('userData', JSON.stringify(newData));
-    } catch (error) {
-      console.error('Error updating user data:', error);
-    }
-  };
-
-  // Add gold function
-  const addGold = async (amount) => {
-    const userData = await getUserData();
-    if (userData) {
-      userData.goldCoins += amount;
-      await updateUserData(userData);
-      setGoldCoins(userData.goldCoins);
     }
   };
 
@@ -189,6 +221,17 @@ export default function App() {
       await updateUserData(userData);
       setPetName(newPetName);
       setIsDialogVisible(false);
+    }
+  };
+
+  // manualTest for clearing user data
+  const manualTestClearUserData = async () => {
+    try {
+      await AsyncStorage.clear();
+      await initializeUserData();
+      setGoldCoins(0); // Reset goldCoins state after clearing data
+    } catch (error) {
+      console.error('Error clearing user data:', error);
     }
   };
 
@@ -325,8 +368,14 @@ export default function App() {
   };
 
   // Swipe gesture for background change
-  const handleGesture = ({ nativeEvent }) => {
+  const handleGesture = async ({ nativeEvent }) => {
     if (nativeEvent.state === State.END) {
+      const userData = await getUserData();
+      const unlockedBackgrounds = [backgroundImage];
+      if (userData?.purchasedItems?.bearClub) {
+        unlockedBackgrounds.push(bearClubImage);
+      }
+
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
         Animated.timing(backgroundFadeAnim, {
@@ -335,10 +384,8 @@ export default function App() {
           useNativeDriver: true,
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
-            if (prevIndex === 1 && !isBearClubUnlocked) {
-              return 0;
-            }
-            return (prevIndex - 1 + backgrounds.length) % backgrounds.length;
+            const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+            return newIndex;
           });
           Animated.timing(backgroundFadeAnim, {
             toValue: 1,
@@ -354,10 +401,8 @@ export default function App() {
           useNativeDriver: true,
         }).start(() => {
           setBackgroundIndex((prevIndex) => {
-            if (prevIndex === 0 && !isBearClubUnlocked) {
-              return 0;
-            }
-            return (prevIndex + 1) % backgrounds.length;
+            const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
+            return newIndex;
           });
           Animated.timing(backgroundFadeAnim, {
             toValue: 1,
@@ -434,23 +479,13 @@ export default function App() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   }
 
-  // ITEM UNLOCKS
-  // Unlock Bear Club
-  const unlockBearClub = () => {
-    if (goldCoins >= 100) {
-      setGoldCoins(goldCoins - 100);
-      setIsBearClubUnlocked(true);
-      backgrounds.push(bearClubImage);
-    }
-  };
-
   // Main screen rendering
   const renderMainScreen = () => (
     <Animated.View style={[styles.container, { transform: [{ translateY: mainScreenSlideAnim }] }]}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <Animated.View style={styles.container}>
           <Animated.View style={{ ...styles.backgroundContainer, opacity: backgroundFadeAnim }}>
-            <ExpoImage source={backgrounds[backgroundIndex]} style={styles.background} />
+            <ExpoImage source={allBackgrounds[backgroundIndex]} style={styles.background} />
           </Animated.View>
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
             <ExpoImage source={storeIcon} style={styles.storeIcon} />
@@ -497,6 +532,9 @@ export default function App() {
           <TouchableOpacity style={styles.renameButton} onPress={handleRenamePet}>
             <Text style={styles.buttonText}>rename</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.manualTestClearUserDataButton} onPress={manualTestClearUserData}>
+            <Text style={styles.buttonText}>clear data</Text>
+          </TouchableOpacity>
         </View>
       )}
     </Animated.View>
@@ -516,33 +554,55 @@ export default function App() {
         <Text style={styles.goldText}>{goldCoins} Gold</Text>
       </View>
       <View style={styles.storeItemsContainer}>
-        <View style={styles.storeItem}>
-          <Text style={styles.storeItemName}>Bear Club</Text>
-          <TouchableOpacity style={styles.itemContainer} onPress={unlockBearClub} disabled={isBearClubUnlocked || goldCoins < 100}>
-            <ExpoImage
-              source={bearClubImage}
-              style={isBearClubUnlocked ? styles.bearClubImage : styles.greyedBearClubImage}
-            />
-            {!isBearClubUnlocked && (
-              <TouchableOpacity style={styles.lockIconContainer} onPress={unlockBearClub}>
-                <ExpoImage source={lockIcon} style={styles.lockIcon} />
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.storeItemPrice}>
-            {isBearClubUnlocked ? 'Purchased!' : '100 Gold'}
-          </Text>
-        </View>
-        {Array.from({ length: 5 }).map((_, index) => (
+        {storeItems.map((item, index) => (
           <View key={index} style={styles.storeItem}>
-            <Text style={styles.storeItemName}></Text>
-            <View style={styles.itemContainer}></View>
-            <Text style={styles.storeItemPrice}></Text>
+            <Text style={styles.storeItemName}>{item.name}</Text>
+            <TouchableOpacity
+              style={styles.itemContainer}
+              onPress={() => handlePurchaseItem(item.key, item.cost)}
+              disabled={item.isUnlocked || goldCoins < item.cost}
+            >
+              <ExpoImage
+                source={item.image}
+                style={item.isUnlocked ? styles.itemImage : styles.greyedItemImage}
+              />
+              {!item.isUnlocked && (
+                <TouchableOpacity style={styles.lockIconContainer} onPress={() => handlePurchaseItem(item.key, item.cost)}>
+                  <ExpoImage source={lockIcon} style={styles.lockIcon} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.storeItemPrice}>
+              {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
+            </Text>
           </View>
         ))}
       </View>
     </Animated.View>
   );
+
+  // Store items configuration
+  const storeItems = [
+    {
+      key: 'bearClub',
+      name: 'Bear Club',
+      cost: 100,
+      image: bearClubImage,
+      isUnlocked: isBearClubUnlocked,
+    },
+    // Add more items here
+  ];
+
+  const handlePurchaseItem = async (itemKey, cost) => {
+    const success = await purchaseItem(itemKey, cost);
+    if (success) {
+      // Update the local state based on the purchased item
+      if (itemKey === 'bearClub') {
+        setIsBearClubUnlocked(true);
+      }
+      // Update state for other items if necessary
+    }
+  };
 
   // Camera screen rendering
   const renderCameraScreen = () => (
@@ -809,6 +869,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  manualTestClearUserDataButton: {
+    position: 'absolute',
+    top: 190,
+    right: 0,
+    width: 100,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   menuContainer: {
     position: 'absolute',
     top: 170,
@@ -896,12 +968,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
   },
-  bearClubImage: {
+  itemImage: {
     width: '100%',
     height: '100%',
     borderRadius: 10,
   },
-  greyedBearClubImage: {
+  greyedItemImage: {
     width: '100%',
     height: '100%',
     borderRadius: 10,
