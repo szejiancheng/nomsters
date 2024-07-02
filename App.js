@@ -25,6 +25,7 @@ const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
+const diaryIcon = require('./assets/icons/diary.png');
 
 const allBackgrounds = [backgroundImage, bearClubImage];
 
@@ -518,6 +519,9 @@ export default function App() {
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
             <ExpoImage source={storeIcon} style={styles.storeIcon} />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.diaryButton}>
+            <ExpoImage source={diaryIcon} style={styles.diaryIcon} />
+          </TouchableOpacity>
           <View style={styles.messageContainer}>
             <Text style={styles.messageText}>{getHealthMessage()}</Text>
           </View>
@@ -784,6 +788,16 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   storeIcon: {
+    width: 65,
+    height: 65,
+  },
+  diaryButton: {
+    position: 'absolute',
+    top: 190,
+    left: 20,
+    zIndex: 1,
+  },
+  diaryIcon: {
     width: 65,
     height: 65,
   },
