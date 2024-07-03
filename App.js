@@ -25,13 +25,24 @@ const soundIcon = require('./assets/icons/sound.png');
 const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
+const mountainsMusic = require('./assets/music/mountains.wav');
+const castleMusic = require('./assets/music/castle.wav');
+const cloudMusic = require('./assets/music/cloud.wav');
+const mystical1Music = require('./assets/music/mystical1.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
+const mysticalCropped1Image = require('./assets/backgrounds/Mystical_CROPPED1.png');
+const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.png');
+const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
+const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 const diaryIcon = require('./assets/icons/diary.png');
 
 const rightArrowIcon = require('./assets/icons/rightarrow.png');
 const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
-const allBackgrounds = [backgroundImage, bearClubImage];
+const allBackgrounds = [
+  backgroundImage, bearClubImage, mountainsCropped1Image, 
+  castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
+];
 
 const USER_DATA_KEY = 'userData';
 
@@ -118,6 +129,11 @@ export default function App() {
   const [goldCoins, setGoldCoins] = useState(0);
   // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [isMountainUnlocked, setIsMountainUnlocked] = useState(false);
+  const [isCastleUnlocked, setIsCastleUnlocked] = useState(false);
+  const [isCloudUnlocked, setIsCloudUnlocked] = useState(false);
+  const [isMystical1Unlocked, setIsMystical1Unlocked] = useState(false);
+
   const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
@@ -217,6 +233,11 @@ export default function App() {
         setGoldCoins(data.goldCoins);
         setPurchasedItems(data.purchasedItems || {});
         setIsBearClubUnlocked(data.purchasedItems?.bearClub || false);
+        setIsMountainUnlocked(data.purchasedItems?.mountains || false);
+        setIsCastleUnlocked(data.purchasedItems?.castle || false);
+        setIsCloudUnlocked(data.purchasedItems?.cloud || false);
+        setIsMystical1Unlocked(data.purchasedItems?.mystical1 || false);
+
         if (data.petName.trim() === '') {
           setIsDialogVisible(true);
         }
@@ -267,6 +288,11 @@ export default function App() {
       setPetHealth(100); // Reset petHealth state after clearing data
       setInventoryContent(''); // Reset inventoryContent state after clearing data
       setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
+      setIsMountainUnlocked(false);
+      setIsCastleUnlocked(false);
+      setIsCloudUnlocked(false);
+      setIsMystical1Unlocked(false);
+
       setPurchasedItems({}); // Reset purchasedItems state after clearing data
       setPetName(''); // Reset petName state after clearing data
       setIsDialogVisible(true); // Show dialog to set pet name after clearing data
@@ -406,6 +432,19 @@ export default function App() {
       if (userData?.purchasedItems?.bearClub) {
         unlockedBackgrounds.push(bearClubImage);
       }
+      if (userData?.purchasedItems?.mountains) {
+        unlockedBackgrounds.push(mountainsCropped1Image);
+      }
+      if (userData?.purchasedItems?.castle) {
+        unlockedBackgrounds.push(castleCropped1Image);
+      }
+      if (userData?.purchasedItems?.cloud) {
+        unlockedBackgrounds.push(cloudCropped1Image);
+      }
+      if (userData?.purchasedItems?.mystical1) {
+        unlockedBackgrounds.push(mysticalCropped1Image);
+      }
+
 
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
@@ -459,19 +498,38 @@ export default function App() {
     if (userData?.purchasedItems?.bearClub) {
       unlockedBackgrounds.push(bearClubImage);
     }
+    if (userData?.purchasedItems?.mountains) {
+      unlockedBackgrounds.push(mountainsCropped1Image);
+    }
+    if (userData?.purchasedItems?.castle) {
+      unlockedBackgrounds.push(castleCropped1Image);
+    }
+    if (userData?.purchasedItems?.cloud) {
+      unlockedBackgrounds.push(cloudCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical1) {
+      unlockedBackgrounds.push(mysticalCropped1Image);
+    }
+
+  
     setInventoryContent(
-      <>
-        {unlockedBackgrounds.map((bg, index) => (
-          <TouchableOpacity key={index} onPress={() => setBackgroundIndex(index)}>
-            <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+      <View style={styles.backgroundThumbnailsWrapper}>
+        <View style={styles.backgroundThumbnailsContainer}>
+          {unlockedBackgrounds.map((bg, index) => (
+            <TouchableOpacity key={index} onPress={() => setBackgroundIndex(allBackgrounds.indexOf(bg))}>
+              <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.backbuttonContainer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </>
+        </View>
+      </View>
     );
   };
+  
 
   // Play background music based on background index
   const playBackgroundMusic = async () => {
@@ -479,13 +537,22 @@ export default function App() {
       if (sound) {
         await sound.unloadAsync();
       }
-
+  
+      const backgroundMusic = [
+        beachMusic,       // 0 - Beach
+        bearClubMusic,    // 1 - Bear Club
+        mountainsMusic,   // 2 - Mountains
+        castleMusic,      // 3 - Castle
+        cloudMusic,       // 4 - Cloud
+        mystical1Music,   // 5 - Mystical
+      ];
+  
       const { sound: newSound } = await Audio.Sound.createAsync(
-        backgroundIndex === 0 ? beachMusic : bearClubMusic
+        backgroundMusic[backgroundIndex]
       );
-
+  
       setSound(newSound);
-
+  
       await newSound.setIsLoopingAsync(true);
       if (musicEnabled) {
         await newSound.playAsync();
@@ -494,7 +561,6 @@ export default function App() {
       console.error("Error loading or playing sound:", error);
     }
   };
-
   // Handle camera permissions
   if (!permission) {
     return <View />;
@@ -635,6 +701,35 @@ export default function App() {
       image: bearClubImage,
       isUnlocked: isBearClubUnlocked,
     },
+    {
+      key: 'mountains',
+      name: 'Mountains',
+      cost: 150,
+      image: mountainsCropped1Image,
+      isUnlocked: isMountainUnlocked,
+    },
+    {
+      key: 'castle',
+      name: 'Castle',
+      cost: 200,
+      image: castleCropped1Image,
+      isUnlocked: isCastleUnlocked,
+    },
+    {
+      key: 'cloud',
+      name: 'Cloud',
+      cost: 200,
+      image: cloudCropped1Image,
+      isUnlocked: isCloudUnlocked,
+    },
+    {
+      key: 'mystical1',
+      name: 'Mystical',
+      cost: 300,
+      image: mysticalCropped1Image,
+      isUnlocked: isMystical1Unlocked,
+    },
+
     // Add more items here
   ];
 
@@ -646,6 +741,19 @@ export default function App() {
       if (itemKey === 'bearClub') {
         setIsBearClubUnlocked(true);
       }
+      if (itemKey === 'mountains') {
+        setIsMountainUnlocked(true);
+      }
+      if (itemKey === 'castle') {
+        setIsCastleUnlocked(true);
+      }
+      if (itemKey === 'cloud') {
+        setIsCloudUnlocked(true);
+      }
+      if (itemKey === 'mystical1') {
+        setIsMystical1Unlocked(true);
+      }
+
       // Update state for other items if necessary
     }
   };
@@ -1337,18 +1445,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 5,
   },
-  backgroundThumbnail: { //inventory background icons
-    width: 200,
-    height: 200,
-    margin: 10,
+  backgroundThumbnailsWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backgroundThumbnailsContainer: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backgroundThumbnail: {
+    width: Dimensions.get('window').width / 2 - 20,
+    height: 150,
+    margin: 5,
     borderRadius: 10,
+  },
+  backbuttonContainer: {
+    alignItems: 'center',
+    marginTop: 20,
   },
   backButton: {
     backgroundColor: '#d3c683',
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
+    width: Dimensions.get('window').width / 2 - 20,
   },
   backButtonText: {
     fontSize: 18,
