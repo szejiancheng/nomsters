@@ -101,9 +101,7 @@ export default function App() {
   const [petName, setPetName] = useState('');
   const healthBarWidth = useRef(new Animated.Value(100)).current;
   // Fade Animations
-  const [cameraFadeAnim] = useState(new Animated.Value(1));
-  const [storeFadeAnim] = useState(new Animated.Value(1));
-  const [backgroundFadeAnim] = useState(new Animated.Value(1));
+  const [fadeAnim] = useState(new Animated.Value(1)); // Single fadeAnim for all fade animations
   // Screen Renders
   const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
   const [showCameraScreen, setShowCameraScreen] = useState(false);
@@ -140,8 +138,6 @@ export default function App() {
   const [diaryPictures, setDiaryPictures] = useState([]);
   const [diaryPictureIndex, setDiaryPictureIndex] = useState(0);
   const [diaryPictureOpacity] = useState(new Animated.Value(1));
-
-
 
   useEffect(() => {
     if (inventoryVisible) {
@@ -284,11 +280,7 @@ export default function App() {
 
   // Feed pet handler
   const handleFeedPet = () => {
-    Animated.timing(cameraFadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
+    fadeIn(fadeAnim);
     setShowCameraScreen(true);
   };
 
@@ -336,62 +328,38 @@ export default function App() {
 
   // Open Store Animation
   const openStore = () => {
-    Animated.timing(storeFadeAnim, {
-      toValue: 0,
-      duration: 10,
-      useNativeDriver: true,
-    }).start(() => {
+    fadeOut(fadeAnim, () => {
       setShowNewScreen(true);
-      Animated.timing(storeFadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(fadeAnim);
     });
   };
 
   // Close Store Animation
   const closeStore = () => {
-    Animated.timing(storeFadeAnim, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
+    fadeOut(fadeAnim, () => {
       setShowNewScreen(false);
-      Animated.timing(backgroundFadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(fadeAnim);
     });
   };
 
   // Close Camera Animation
   const closeCamera = () => {
-    Animated.timing(cameraFadeAnim, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
+    fadeOut(fadeAnim, () => {
       setShowCameraScreen(false);
-      Animated.timing(cameraFadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(fadeAnim);
     });
   };
 
-  const fadeIn = () => {
-    Animated.timing(diaryPictureOpacity, {
+  const fadeIn = (anim) => {
+    Animated.timing(anim, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start();
   };
   
-  const fadeOut = (callback) => {
-    Animated.timing(diaryPictureOpacity, {
+  const fadeOut = (anim, callback) => {
+    Animated.timing(anim, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
@@ -436,37 +404,21 @@ export default function App() {
 
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
-        Animated.timing(backgroundFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
+        fadeOut(fadeAnim, () => {
           setBackgroundIndex((prevIndex) => {
             const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
             return newIndex;
           });
-          Animated.timing(backgroundFadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
+          fadeIn(fadeAnim);
         });
       } else if (nativeEvent.translationX < -50) {
         // Handle swipe left
-        Animated.timing(backgroundFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
+        fadeOut(fadeAnim, () => {
           setBackgroundIndex((prevIndex) => {
             const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
             return newIndex;
           });
-          Animated.timing(backgroundFadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
+          fadeIn(fadeAnim);
         });
       } else if (nativeEvent.translationY < -50) {
         // Handle swipe up
@@ -562,7 +514,7 @@ export default function App() {
     <Animated.View style={[styles.container, { transform: [{ translateY: mainScreenSlideAnim }] }]}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <Animated.View style={styles.container}>
-          <Animated.View style={{ ...styles.backgroundContainer, opacity: backgroundFadeAnim }}>
+          <Animated.View style={{ ...styles.backgroundContainer, opacity: fadeAnim }}>
             <ExpoImage source={allBackgrounds[backgroundIndex]} style={styles.background} />
           </Animated.View>
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
@@ -624,7 +576,7 @@ export default function App() {
 
   // Store screen rendering
   const renderStoreScreen = () => (
-    <Animated.View style={[styles.newScreenContainer, { opacity: storeFadeAnim }]}>
+    <Animated.View style={[styles.newScreenContainer, { opacity: fadeAnim }]}>
       <ExpoImage source={storeBackgroundImage} style={styles.newBackground} />
       <TouchableOpacity style={styles.closeButton} onPress={closeStore}>
         <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
@@ -689,7 +641,7 @@ export default function App() {
 
   // Camera screen rendering
   const renderCameraScreen = () => (
-    <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
+    <Animated.View style={[styles.cameraContainer, { opacity: fadeAnim }]}>
       <CameraView
         style={styles.cameraView}
         ref={cameraRef}
@@ -761,20 +713,20 @@ export default function App() {
 
   // Handle next and previous picture navigation
   const handleNextPicture = () => {
-    fadeOut(() => {
+    fadeOut(diaryPictureOpacity, () => {
       setDiaryPictureIndex((prevIndex) => {
         const newIndex = Math.min(prevIndex + 1, diaryPictures.length - 1);
-        fadeIn();
+        fadeIn(diaryPictureOpacity);
         return newIndex;
       });
     });
   };
   
   const handlePreviousPicture = () => {
-    fadeOut(() => {
+    fadeOut(diaryPictureOpacity, () => {
       setDiaryPictureIndex((prevIndex) => {
         const newIndex = Math.max(prevIndex - 1, 0);
-        fadeIn();
+        fadeIn(diaryPictureOpacity);
         return newIndex;
       });
     });
@@ -1381,13 +1333,13 @@ const styles = StyleSheet.create({
 
   imageContainer: {
     width: '100%',
-    height: 350, // Adjust the height as needed to show top 2/3 of the picture
+    height: 350,
     overflow: 'hidden',
   },
   diaryImage: {
     width: '100%',
     height: '150%', // This ensures that only the top 2/3 of the image is visible
-    resizeMode: 'cover', // Maintain the aspect ratio of the image
+    resizeMode: 'cover',
   },
   picturePlaceholder: {
     width: '100%',
