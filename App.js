@@ -26,6 +26,8 @@ const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
 const diaryIcon = require('./assets/icons/diary.png');
+const rightArrowIcon = require('./assets/icons/rightarrow.png');
+const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
 const allBackgrounds = [backgroundImage, bearClubImage];
 
@@ -135,8 +137,8 @@ export default function App() {
 
   // Food diary
   const [diaryModalVisible, setDiaryModalVisible] = useState(false);
-  const [diaryPicture, setDiaryPicture] = useState(null);
-
+  const [diaryPictures, setDiaryPictures] = useState([]);
+  const [diaryPictureIndex, setDiaryPictureIndex] = useState(0);
 
 
   useEffect(() => {
@@ -233,10 +235,13 @@ export default function App() {
   };
 
   //Handle diary icon press
-  const handleDiaryPress = () => {
+  const handleDiaryPress = async () => {
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    setDiaryPictures(pictures);
+    setDiaryPictureIndex(pictures.length - 1);
     setDiaryModalVisible(true);
   };
-  
 
   // manualTest for clearing user data
   const manualTestClearUserData = async () => {
@@ -710,10 +715,9 @@ export default function App() {
         pictures: updatedPictures,
       });
   
-      // Set the picture to be displayed in the diary modal
-      setDiaryPicture(newPath);
-  
-      // Open the diary modal
+      // Set the pictures and open the diary modal
+      setDiaryPictures(updatedPictures);
+      setDiaryPictureIndex(updatedPictures.length - 1);
       setDiaryModalVisible(true);
     } catch (error) {
       console.error('Error analyzing picture:', error);
@@ -721,6 +725,15 @@ export default function App() {
       // Clear the captured image state
       setCapturedImage(null);
     }
+  };
+
+  // Handle next and previous picture navigation
+  const handleNextPicture = () => {
+    setDiaryPictureIndex((prevIndex) => Math.min(prevIndex + 1, diaryPictures.length - 1));
+  };
+
+  const handlePreviousPicture = () => {
+    setDiaryPictureIndex((prevIndex) => Math.max(prevIndex - 1, 0));
   };
 
   // Health Bar Animations
@@ -812,9 +825,33 @@ export default function App() {
             <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
               <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
             </TouchableOpacity>
-            {diaryPicture ? (
+            {diaryPictures.length > 1 && (
+              <>
+                <TouchableOpacity
+                  style={styles.leftArrowButton}
+                  onPress={handlePreviousPicture}
+                  disabled={diaryPictureIndex === 0}
+                >
+                  <ExpoImage
+                    source={leftArrowIcon}
+                    style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rightArrowButton}
+                  onPress={handleNextPicture}
+                  disabled={diaryPictureIndex === diaryPictures.length - 1}
+                >
+                  <ExpoImage
+                    source={rightArrowIcon}
+                    style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                  />
+                </TouchableOpacity>
+              </>
+            )}
+            {diaryPictures[diaryPictureIndex] ? (
               <View style={styles.imageContainer}>
-                <ExpoImage source={{ uri: diaryPicture }} style={styles.diaryImage} />
+                <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex] }} style={styles.diaryImage} />
               </View>
             ) : (
               <View style={styles.picturePlaceholder}>
@@ -1268,6 +1305,30 @@ const styles = StyleSheet.create({
     right: 10,
     zIndex: 2,
   },
+  leftArrowButton: {
+    position: 'absolute',
+    left: 0,
+    top: '40%',
+    transform: [{ translateY: -20 }],
+    zIndex: 2,
+  },
+  rightArrowButton: {
+    position: 'absolute',
+    right: 0,
+    top: '40%',
+    transform: [{ translateY: -20 }],
+    zIndex: 2,
+  },
+  arrowIcon: {
+    width: 50,
+    height: 50,
+  },
+
+  greyedArrowIcon: {
+    width: 50,
+    height: 50,
+    opacity: 0,
+  },
 
   imageContainer: {
     width: '100%',
@@ -1297,5 +1358,4 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     textAlignVertical: 'top',
   },
-  
 });
