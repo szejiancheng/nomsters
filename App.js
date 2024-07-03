@@ -7,6 +7,7 @@ import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFonts } from 'expo-font';
 
 // ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
@@ -33,6 +34,10 @@ const mysticalCropped1Image = require('./assets/backgrounds/Mystical_CROPPED1.pn
 const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.png');
 const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
 const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
+const diaryIcon = require('./assets/icons/diary.png');
+
+const rightArrowIcon = require('./assets/icons/rightarrow.png');
+const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
 const allBackgrounds = [
   backgroundImage, bearClubImage, mountainsCropped1Image, 
@@ -86,10 +91,10 @@ const unlockItem = async (itemKey) => {
   }
 };
 
-const isItemUnlocked = async (itemKey) => {
-  const userData = await getUserData();
-  return userData && userData.purchasedItems[itemKey];
-};
+// const isItemUnlocked = async (itemKey) => {
+//   const userData = await getUserData();
+//   return userData && userData.purchasedItems[itemKey];
+// };
 
 // Purchase Function
 const purchaseItem = async (itemKey, cost) => {
@@ -103,15 +108,18 @@ const purchaseItem = async (itemKey, cost) => {
 };
 
 export default function App() {
+  // Fonts
+  const [loaded, error] = useFonts({
+    'eightbit': require('./assets/fonts/8bitfont.otf'),
+  });
+
   // STATE MANAGEMENT
   // Health Bar
   const [petHealth, setPetHealth] = useState(100);
   const [petName, setPetName] = useState('');
   const healthBarWidth = useRef(new Animated.Value(100)).current;
   // Fade Animations
-  const [cameraFadeAnim] = useState(new Animated.Value(1));
-  const [storeFadeAnim] = useState(new Animated.Value(1));
-  const [backgroundFadeAnim] = useState(new Animated.Value(1));
+  const [fadeAnim] = useState(new Animated.Value(1)); // Single fadeAnim for all fade animations
   // Screen Renders
   const [showNewScreen, setShowNewScreen] = useState(false); //for rendering new bgs
   const [showCameraScreen, setShowCameraScreen] = useState(false);
@@ -147,6 +155,12 @@ export default function App() {
   // Inventory Slide Animation
   const [inventorySlideAnim] = useState(new Animated.Value(Dimensions.get('window').height));
   const [mainScreenSlideAnim] = useState(new Animated.Value(0));
+
+  // Food diary
+  const [diaryModalVisible, setDiaryModalVisible] = useState(false);
+  const [diaryPictures, setDiaryPictures] = useState([]);
+  const [diaryPictureIndex, setDiaryPictureIndex] = useState(0);
+  const [diaryPictureOpacity] = useState(new Animated.Value(1));
 
   useEffect(() => {
     if (inventoryVisible) {
@@ -246,6 +260,25 @@ export default function App() {
     }
   };
 
+  //Handle diary icon press
+  const handleDiaryPress = async () => {
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    setDiaryPictures(pictures);
+    setDiaryPictureIndex(pictures.length - 1);
+    setDiaryModalVisible(true);
+  };
+
+  const handleDiarySwipeGesture = ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationX > 50) {
+        handlePreviousPicture();
+      } else if (nativeEvent.translationX < -50) {
+        handleNextPicture();
+      }
+    }
+  };
+
   // manualTest for clearing user data
   const manualTestClearUserData = async () => {
     try {
@@ -279,11 +312,7 @@ export default function App() {
 
   // Feed pet handler
   const handleFeedPet = () => {
-    Animated.timing(cameraFadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
+    fadeIn(fadeAnim);
     setShowCameraScreen(true);
   };
 
@@ -331,49 +360,43 @@ export default function App() {
 
   // Open Store Animation
   const openStore = () => {
-    Animated.timing(storeFadeAnim, {
-      toValue: 0,
-      duration: 10,
-      useNativeDriver: true,
-    }).start(() => {
+    fadeOut(fadeAnim, () => {
       setShowNewScreen(true);
-      Animated.timing(storeFadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(fadeAnim);
     });
   };
 
   // Close Store Animation
   const closeStore = () => {
-    Animated.timing(storeFadeAnim, {
-      toValue: 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
+    fadeOut(fadeAnim, () => {
       setShowNewScreen(false);
-      Animated.timing(backgroundFadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(fadeAnim);
     });
   };
 
   // Close Camera Animation
   const closeCamera = () => {
-    Animated.timing(cameraFadeAnim, {
+    fadeOut(fadeAnim, () => {
+      setShowCameraScreen(false);
+      fadeIn(fadeAnim);
+    });
+  };
+
+  const fadeIn = (anim) => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const fadeOut = (anim, callback) => {
+    Animated.timing(anim, {
       toValue: 0,
-      duration: 500,
+      duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      setShowCameraScreen(false);
-      Animated.timing(cameraFadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      if (callback) callback();
     });
   };
 
@@ -425,37 +448,21 @@ export default function App() {
 
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
-        Animated.timing(backgroundFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
+        fadeOut(fadeAnim, () => {
           setBackgroundIndex((prevIndex) => {
             const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
             return newIndex;
           });
-          Animated.timing(backgroundFadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
+          fadeIn(fadeAnim);
         });
       } else if (nativeEvent.translationX < -50) {
         // Handle swipe left
-        Animated.timing(backgroundFadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
+        fadeOut(fadeAnim, () => {
           setBackgroundIndex((prevIndex) => {
             const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
             return newIndex;
           });
-          Animated.timing(backgroundFadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
+          fadeIn(fadeAnim);
         });
       } else if (nativeEvent.translationY < -50) {
         // Handle swipe up
@@ -578,12 +585,16 @@ export default function App() {
     <Animated.View style={[styles.container, { transform: [{ translateY: mainScreenSlideAnim }] }]}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <Animated.View style={styles.container}>
-          <Animated.View style={{ ...styles.backgroundContainer, opacity: backgroundFadeAnim }}>
+          <Animated.View style={{ ...styles.backgroundContainer, opacity: fadeAnim }}>
             <ExpoImage source={allBackgrounds[backgroundIndex]} style={styles.background} />
           </Animated.View>
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
             <ExpoImage source={storeIcon} style={styles.storeIcon} />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.diaryButton} onPress={handleDiaryPress}>
+            <ExpoImage source={diaryIcon} style={styles.diaryIcon} />
+          </TouchableOpacity>
+
           <View style={styles.messageContainer}>
             <Text style={styles.messageText}>{getHealthMessage()}</Text>
           </View>
@@ -636,7 +647,7 @@ export default function App() {
 
   // Store screen rendering
   const renderStoreScreen = () => (
-    <Animated.View style={[styles.newScreenContainer, { opacity: storeFadeAnim }]}>
+    <Animated.View style={[styles.newScreenContainer, { opacity: fadeAnim }]}>
       <ExpoImage source={storeBackgroundImage} style={styles.newBackground} />
       <TouchableOpacity style={styles.closeButton} onPress={closeStore}>
         <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
@@ -743,7 +754,7 @@ export default function App() {
 
   // Camera screen rendering
   const renderCameraScreen = () => (
-    <Animated.View style={[styles.cameraContainer, { opacity: cameraFadeAnim }]}>
+    <Animated.View style={[styles.cameraContainer, { opacity: fadeAnim }]}>
       <CameraView
         style={styles.cameraView}
         ref={cameraRef}
@@ -780,13 +791,75 @@ export default function App() {
 
   // Analyse Picture Feature (to add send to API)
   const handleAnalysePicture = async () => {
-    const filename = capturedImage.split('/').pop();
-    const newPath = `${FileSystem.documentDirectory}${filename}`;
-    await FileSystem.moveAsync({
-      from: capturedImage,
-      to: newPath,
+    try {
+      const filename = capturedImage.split('/').pop();
+      const newPath = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.moveAsync({
+        from: capturedImage,
+        to: newPath,
+      });
+
+      const currentDate = new Date();
+      const hours = currentDate.getHours();
+      let meal = '';
+      
+      if (hours >= 6 && hours < 11) {
+        meal = 'Breakfast';
+      } else if (hours >= 11 && hours < 15) {
+        meal = 'Lunch';
+      } else if (hours >= 15 && hours < 18) {
+        meal = 'Tea Time Snack';
+      } else if (hours >= 18 && hours < 22) {
+        meal = 'Dinner';
+      } else {
+        meal = 'Supper';
+      }
+
+      const pictureData = {
+        uri: newPath,
+        date: currentDate.toLocaleDateString(), // Save the date as a string
+        time: currentDate.toLocaleTimeString(), // Save the time as a string
+        meal, // Save the meal type as a string
+      };
+
+      const userData = await getUserData();
+      const pictures = userData?.pictures || [];
+      const updatedPictures = [...pictures, pictureData];
+
+      await updateUserData({
+        ...userData,
+        pictures: updatedPictures,
+      });
+
+      setDiaryPictures(updatedPictures);
+      setDiaryPictureIndex(updatedPictures.length - 1);
+      setDiaryModalVisible(true);
+    } catch (error) {
+      console.error('Error analyzing picture:', error);
+    } finally {
+      setCapturedImage(null);
+    }
+  };
+
+  // Handle next and previous picture navigation
+  const handleNextPicture = () => {
+    fadeOut(diaryPictureOpacity, () => {
+      setDiaryPictureIndex((prevIndex) => {
+        const newIndex = Math.min(prevIndex + 1, diaryPictures.length - 1);
+        fadeIn(diaryPictureOpacity);
+        return newIndex;
+      });
     });
-    setCapturedImage(null);
+  };
+  
+  const handlePreviousPicture = () => {
+    fadeOut(diaryPictureOpacity, () => {
+      setDiaryPictureIndex((prevIndex) => {
+        const newIndex = Math.max(prevIndex - 1, 0);
+        fadeIn(diaryPictureOpacity);
+        return newIndex;
+      });
+    });
   };
 
   // Health Bar Animations
@@ -867,6 +940,68 @@ export default function App() {
           </View>
         </View>
       </Modal>
+      <Modal
+        visible={diaryModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDiaryModalVisible(false)}
+      >
+        <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
+          <Animated.View style={styles.diaryModalContainer}>
+            <View style={styles.diaryModalContent}>
+              <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+                <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+              </TouchableOpacity>
+              {diaryPictures.length > 1 && (
+                <>
+                  <TouchableOpacity
+                    style={styles.leftArrowButton}
+                    onPress={handlePreviousPicture}
+                    disabled={diaryPictureIndex === 0}
+                  >
+                    <ExpoImage
+                      source={leftArrowIcon}
+                      style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.rightArrowButton}
+                    onPress={handleNextPicture}
+                    disabled={diaryPictureIndex === diaryPictures.length - 1}
+                  >
+                    <ExpoImage
+                      source={rightArrowIcon}
+                      style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+              {diaryPictures[diaryPictureIndex] ? (
+                <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
+                  <View style={styles.dateMealContainer}>
+                    <Text style={styles.diaryDateText}>
+                      {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
+                    </Text>
+                    </View>
+                    <View style={styles.dateTimeContainer}>
+                    <Text style={styles.diaryTimeText}>
+                    {diaryPictures[diaryPictureIndex].time}
+                  </Text>
+                  </View>
+                  <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
+
+                </Animated.View>
+              ) : (
+                <View style={styles.picturePlaceholder}></View>
+              )}
+              <Text style={styles.diaryTextInput}>
+                API Food data goes here.
+              </Text>
+            </View>
+          </Animated.View>
+        </PanGestureHandler>
+      </Modal>
+
     </GestureHandlerRootView>
   );
 }
@@ -895,6 +1030,16 @@ const styles = StyleSheet.create({
     width: 65,
     height: 65,
   },
+  diaryButton: {
+    position: 'absolute',
+    top: 190,
+    left: 20,
+    zIndex: 1,
+  },
+  diaryIcon: {
+    width: 65,
+    height: 65,
+  },
   messageContainer: {
     alignItems: 'center',
     marginTop: 36,
@@ -904,6 +1049,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
+    fontFamily: 'eightbit',
   },
   healthBarContainer: {
     flexDirection: 'row',
@@ -951,6 +1097,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     color: 'gold',
     fontWeight: 'bold',
+    fontFamily: 'eightbit',
   },
   content: {
     flex: 1,
@@ -975,6 +1122,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#000',
     fontWeight: 'bold',
+    fontFamily: 'eightbit',
   },
   menuButton: {
     position: 'absolute',
@@ -1189,8 +1337,9 @@ const styles = StyleSheet.create({
     fontSize: 50,
     color: '#d3b683',
     fontWeight: 'bold',
-    marginBottom: 20,
-    marginTop: 45,
+    marginBottom: 10,
+    marginTop: 70,
+    fontFamily: 'eightbit',
   },
   inventoryCloseButton: {
     position: 'absolute',
@@ -1205,10 +1354,11 @@ const styles = StyleSheet.create({
   },  
 
   inventoryText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
     textAlign: 'center', 
+    fontFamily: 'eightbit',
   },
   
   inventoryButtons: {
@@ -1291,5 +1441,104 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 18,
     color: '#000',
+    fontFamily: 'eightbit',
+  },
+  diaryModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  diaryModalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: '#F8E5CE',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  diaryCloseButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 2,
+  },
+  leftArrowButton: {
+    position: 'absolute',
+    left: 0,
+    top: '40%',
+    transform: [{ translateY: -20 }],
+    zIndex: 2,
+  },
+  rightArrowButton: {
+    position: 'absolute',
+    right: 0,
+    top: '40%',
+    transform: [{ translateY: -20 }],
+    zIndex: 2,
+  },
+  arrowIcon: {
+    width: 50,
+    height: 50,
+  },
+
+  greyedArrowIcon: {
+    width: 50,
+    height: 50,
+    opacity: 0,
+  },
+
+  imageContainer: {
+    width: '100%',
+    height: 350,
+    overflow: 'hidden',
+  },
+  diaryImage: {
+    width: '100%',
+    height: '90%', // This ensures that only the top 2/3 of the image is visible
+    resizeMode: 'cover',
+  },
+  picturePlaceholder: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#ddd',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderRadius: 10,
+  },
+  diaryTextInput: {
+    width: '100%',
+    height: 150,
+    padding: 10,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    textAlignVertical: 'top',
+    fontFamily: 'eightbit',
+  },
+  diaryDateText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontFamily: 'eightbit',
+  },
+  diaryTimeText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 5,
+    fontFamily: 'eightbit',
+  },
+  dateMealContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 0,
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: -10,
   },
 });
