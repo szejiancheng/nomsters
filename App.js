@@ -25,8 +25,13 @@ const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
+const mysticalCropped1Image = require('./assets/backgrounds/Mystical_CROPPED1.png');
+const mysticalCropped2Image = require('./assets/backgrounds/Mystical_CROPPED2.png');
+const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.png');
+const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
+const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 
-const allBackgrounds = [backgroundImage, bearClubImage];
+const allBackgrounds = [backgroundImage, bearClubImage, mysticalCropped1Image, cloudCropped1Image, castleCropped1Image, mountainsCropped1Image, mysticalCropped2Image ];
 
 const USER_DATA_KEY = 'userData';
 
@@ -110,6 +115,11 @@ export default function App() {
   const [goldCoins, setGoldCoins] = useState(0);
   // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [isMountainUnlocked, setIsMountainUnlocked] = useState(false);
+  const [isCastleUnlocked, setIsCastleUnlocked] = useState(false);
+  const [isCloudUnlocked, setIsCloudUnlocked] = useState(false);
+  const [isMystical1Unlocked, setIsMystical1Unlocked] = useState(false);
+  const [isMystical2Unlocked, setIsMystical2Unlocked] = useState(false);
   const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
@@ -203,6 +213,11 @@ export default function App() {
         setGoldCoins(data.goldCoins);
         setPurchasedItems(data.purchasedItems || {});
         setIsBearClubUnlocked(data.purchasedItems?.bearClub || false);
+        setIsMountainUnlocked(data.purchasedItems?.mountains || false);
+        setIsCastleUnlocked(data.purchasedItems?.castle || false);
+        setIsCloudUnlocked(data.purchasedItems?.cloud || false);
+        setIsMystical1Unlocked(data.purchasedItems?.mystical1 || false);
+        setIsMystical2Unlocked(data.purchasedItems?.mystical2 || false);
         if (data.petName.trim() === '') {
           setIsDialogVisible(true);
         }
@@ -234,6 +249,11 @@ export default function App() {
       setPetHealth(100); // Reset petHealth state after clearing data
       setInventoryContent(''); // Reset inventoryContent state after clearing data
       setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
+      setIsMountainUnlocked(false);
+      setIsCastleUnlocked(false);
+      setIsCloudUnlocked(false);
+      setIsMystical1Unlocked(false);
+      setIsMystical2Unlocked(false);
       setPurchasedItems({}); // Reset purchasedItems state after clearing data
       setPetName(''); // Reset petName state after clearing data
       setIsDialogVisible(true); // Show dialog to set pet name after clearing data
@@ -618,6 +638,41 @@ export default function App() {
       image: bearClubImage,
       isUnlocked: isBearClubUnlocked,
     },
+    {
+      key: 'mountains',
+      name: 'Mountains',
+      cost: 150,
+      image: mountainsCropped1Image,
+      isUnlocked: isMountainUnlocked,
+    },
+    {
+      key: 'castle',
+      name: 'Mountains',
+      cost: 200,
+      image: castleCropped1Image,
+      isUnlocked: isCastleUnlocked,
+    },
+    {
+      key: 'cloud',
+      name: 'Mountains',
+      cost: 200,
+      image: cloudCropped1Image,
+      isUnlocked: isCloudUnlocked,
+    },
+    {
+      key: 'mystical1',
+      name: 'Mountains',
+      cost: 300,
+      image: mysticalCropped1Image,
+      isUnlocked: isMystical1Unlocked,
+    },
+    {
+      key: 'mystical2',
+      name: 'Mountains',
+      cost: 300,
+      image: mysticalCropped1Image,
+      isUnlocked: isMystical2Unlocked,
+    },
     // Add more items here
   ];
 
@@ -628,6 +683,21 @@ export default function App() {
       // Update the local state based on the purchased item
       if (itemKey === 'bearClub') {
         setIsBearClubUnlocked(true);
+      }
+      if (itemKey === 'mountains') {
+        setIsMountainUnlocked(true);
+      }
+      if (itemKey === 'castle') {
+        setIsCastleUnlocked(true);
+      }
+      if (itemKey === 'cloud') {
+        setIsCloudUnlocked(true);
+      }
+      if (itemKey === 'mystical1') {
+        setIsMystical1Unlocked(true);
+      }
+      if (itemKey === 'mystical2') {
+        setIsMystical2Unlocked(true);
       }
       // Update state for other items if necessary
     }
