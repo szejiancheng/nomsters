@@ -502,9 +502,15 @@ export default function App() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="grant permission" />
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>
+          <Text style={{ color: 'red' }}>Disclaimer:</Text>
+          {' '}
+          Nomsters needs your permission to use your camera so we can analyze your food.
+        </Text>
+        <TouchableOpacity onPress={requestPermission} style={styles.permissionButton}>
+          <Text style={styles.permissionGrantText}>Grant Permission</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -903,6 +909,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+    justifyContent: 'center', 
+    alignItems: 'center',     
+  },
+  permissionText: {
+    fontSize: 24,             
+    color: 'white',           
+    textAlign: 'center',      
+    fontFamily: 'eightbit',   
+  },
+  permissionGrantText: {
+    fontSize: 27,             
+    color: 'black',           
+    textAlign: 'center',      
+    fontFamily: 'eightbit',   
+  },
+  permissionButton: {
+    backgroundColor: 'white', 
+    paddingVertical: 10,       
+    paddingHorizontal: 20,     
+    borderRadius: 5,           
+    alignItems: 'center',      
+    marginTop: 20,             
+  },
+  
   backgroundContainer: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -1092,14 +1125,15 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     position: 'absolute',
-    top: 60,
+    top: 90,
     width: '100%',
     alignItems: 'center',
   },
   newScreenText: {
     fontSize: 24,
-    color: '#fff',
+    color: '#000',
     zIndex: 1,
+    fontFamily: 'eightbit',
   },
   closeButton: {
     position: 'absolute',
@@ -1129,15 +1163,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   storeItemName: {
-    fontSize: 18,
+    fontSize: 25,
     color: '#fff',
     marginBottom: 5,
     fontWeight: 'bold',
+    fontFamily: 'eightbit',
   },
   storeItemPrice: {
     fontSize: 18,
-    color: 'gold',
+    color: 'black',
     marginTop: 5,
+    fontFamily: 'eightbit',
   },
   lockIconContainer: {
     position: 'absolute',
