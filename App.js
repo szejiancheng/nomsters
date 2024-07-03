@@ -31,7 +31,11 @@ const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.p
 const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
 const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 
-const allBackgrounds = [backgroundImage, bearClubImage, mysticalCropped1Image, cloudCropped1Image, castleCropped1Image, mountainsCropped1Image, mysticalCropped2Image ];
+const allBackgrounds = [
+  backgroundImage, bearClubImage, mountainsCropped1Image, 
+  castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
+  mysticalCropped2Image 
+];
 
 const USER_DATA_KEY = 'userData';
 
@@ -403,6 +407,21 @@ export default function App() {
       if (userData?.purchasedItems?.bearClub) {
         unlockedBackgrounds.push(bearClubImage);
       }
+      if (userData?.purchasedItems?.mountains) {
+        unlockedBackgrounds.push(mountainsCropped1Image);
+      }
+      if (userData?.purchasedItems?.castle) {
+        unlockedBackgrounds.push(castleCropped1Image);
+      }
+      if (userData?.purchasedItems?.cloud) {
+        unlockedBackgrounds.push(cloudCropped1Image);
+      }
+      if (userData?.purchasedItems?.mystical1) {
+        unlockedBackgrounds.push(mysticalCropped1Image);
+      }
+      if (userData?.purchasedItems?.mystical2) {
+        unlockedBackgrounds.push(mysticalCropped2Image);
+      }
 
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
@@ -472,19 +491,40 @@ export default function App() {
     if (userData?.purchasedItems?.bearClub) {
       unlockedBackgrounds.push(bearClubImage);
     }
+    if (userData?.purchasedItems?.mountains) {
+      unlockedBackgrounds.push(mountainsCropped1Image);
+    }
+    if (userData?.purchasedItems?.castle) {
+      unlockedBackgrounds.push(castleCropped1Image);
+    }
+    if (userData?.purchasedItems?.cloud) {
+      unlockedBackgrounds.push(cloudCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical1) {
+      unlockedBackgrounds.push(mysticalCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical2) {
+      unlockedBackgrounds.push(mysticalCropped2Image);
+    }
+  
     setInventoryContent(
-      <>
-        {unlockedBackgrounds.map((bg, index) => (
-          <TouchableOpacity key={index} onPress={() => setBackgroundIndex(index)}>
-            <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+      <View style={styles.backgroundThumbnailsWrapper}>
+        <View style={styles.backgroundThumbnailsContainer}>
+          {unlockedBackgrounds.map((bg, index) => (
+            <TouchableOpacity key={index} onPress={() => setBackgroundIndex(allBackgrounds.indexOf(bg))}>
+              <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.backbuttonContainer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </>
+        </View>
+      </View>
     );
   };
+  
 
   // Play background music based on background index
   const playBackgroundMusic = async () => {
@@ -647,30 +687,30 @@ export default function App() {
     },
     {
       key: 'castle',
-      name: 'Mountains',
+      name: 'Castle',
       cost: 200,
       image: castleCropped1Image,
       isUnlocked: isCastleUnlocked,
     },
     {
       key: 'cloud',
-      name: 'Mountains',
+      name: 'Cloud',
       cost: 200,
       image: cloudCropped1Image,
       isUnlocked: isCloudUnlocked,
     },
     {
       key: 'mystical1',
-      name: 'Mountains',
+      name: 'Mystical 1',
       cost: 300,
       image: mysticalCropped1Image,
       isUnlocked: isMystical1Unlocked,
     },
     {
       key: 'mystical2',
-      name: 'Mountains',
+      name: 'Mystical 2',
       cost: 300,
-      image: mysticalCropped1Image,
+      image: mysticalCropped2Image,
       isUnlocked: isMystical2Unlocked,
     },
     // Add more items here
@@ -1221,18 +1261,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 5,
   },
-  backgroundThumbnail: { //inventory background icons
-    width: 200,
-    height: 200,
-    margin: 10,
+  backgroundThumbnailsWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backgroundThumbnailsContainer: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backgroundThumbnail: {
+    width: Dimensions.get('window').width / 2 - 20,
+    height: 150,
+    margin: 5,
     borderRadius: 10,
+  },
+  backbuttonContainer: {
+    alignItems: 'center',
+    marginTop: 20,
   },
   backButton: {
     backgroundColor: '#d3c683',
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
+    width: Dimensions.get('window').width / 2 - 20,
   },
   backButtonText: {
     fontSize: 18,
