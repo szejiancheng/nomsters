@@ -133,6 +133,12 @@ export default function App() {
   const [inventorySlideAnim] = useState(new Animated.Value(Dimensions.get('window').height));
   const [mainScreenSlideAnim] = useState(new Animated.Value(0));
 
+  // Food diary
+  const [diaryModalVisible, setDiaryModalVisible] = useState(false);
+  const [diaryPicture, setDiaryPicture] = useState(null);
+
+
+
   useEffect(() => {
     if (inventoryVisible) {
       Animated.timing(inventorySlideAnim, {
@@ -225,6 +231,12 @@ export default function App() {
       setIsDialogVisible(false);
     }
   };
+
+  //Handle diary icon press
+  const handleDiaryPress = () => {
+    setDiaryModalVisible(true);
+  };
+  
 
   // manualTest for clearing user data
   const manualTestClearUserData = async () => {
@@ -519,9 +531,10 @@ export default function App() {
           <TouchableOpacity style={styles.storeButton} onPress={openStore}>
             <ExpoImage source={storeIcon} style={styles.storeIcon} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.diaryButton}>
+          <TouchableOpacity style={styles.diaryButton} onPress={handleDiaryPress}>
             <ExpoImage source={diaryIcon} style={styles.diaryIcon} />
           </TouchableOpacity>
+
           <View style={styles.messageContainer}>
             <Text style={styles.messageText}>{getHealthMessage()}</Text>
           </View>
@@ -676,13 +689,38 @@ export default function App() {
 
   // Analyse Picture Feature (to add send to API)
   const handleAnalysePicture = async () => {
-    const filename = capturedImage.split('/').pop();
-    const newPath = `${FileSystem.documentDirectory}${filename}`;
-    await FileSystem.moveAsync({
-      from: capturedImage,
-      to: newPath,
-    });
-    setCapturedImage(null);
+    try {
+      const filename = capturedImage.split('/').pop();
+      const newPath = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.moveAsync({
+        from: capturedImage,
+        to: newPath,
+      });
+  
+      // Retrieve existing pictures from AsyncStorage
+      const userData = await getUserData();
+      const pictures = userData?.pictures || [];
+  
+      // Add the new picture to the list
+      const updatedPictures = [...pictures, newPath];
+  
+      // Save the updated list of pictures back to AsyncStorage
+      await updateUserData({
+        ...userData,
+        pictures: updatedPictures,
+      });
+  
+      // Set the picture to be displayed in the diary modal
+      setDiaryPicture(newPath);
+  
+      // Open the diary modal
+      setDiaryModalVisible(true);
+    } catch (error) {
+      console.error('Error analyzing picture:', error);
+    } finally {
+      // Clear the captured image state
+      setCapturedImage(null);
+    }
   };
 
   // Health Bar Animations
@@ -763,6 +801,35 @@ export default function App() {
           </View>
         </View>
       </Modal>
+      <Modal
+        visible={diaryModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDiaryModalVisible(false)}
+      >
+        <View style={styles.diaryModalContainer}>
+          <View style={styles.diaryModalContent}>
+            <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+              <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+            </TouchableOpacity>
+            {diaryPicture ? (
+              <View style={styles.imageContainer}>
+                <ExpoImage source={{ uri: diaryPicture }} style={styles.diaryImage} />
+              </View>
+            ) : (
+              <View style={styles.picturePlaceholder}>
+                {/* Placeholder for picture */}
+              </View>
+            )}
+            <TextInput
+              style={styles.diaryTextInput}
+              placeholder="Write something..."
+              multiline
+            />
+          </View>
+        </View>
+      </Modal>
+
     </GestureHandlerRootView>
   );
 }
@@ -1182,4 +1249,53 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#000',
   },
+  diaryModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  diaryModalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  diaryCloseButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 2,
+  },
+
+  imageContainer: {
+    width: '100%',
+    height: 350, // Adjust the height as needed to show top 2/3 of the picture
+    overflow: 'hidden',
+  },
+  diaryImage: {
+    width: '100%',
+    height: '150%', // This ensures that only the top 2/3 of the image is visible
+    resizeMode: 'cover', // Maintain the aspect ratio of the image
+  },
+  picturePlaceholder: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#ddd',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderRadius: 10,
+  },
+  diaryTextInput: {
+    width: '100%',
+    height: 150,
+    padding: 10,
+    borderColor: 'gray',
+    borderWidth: 1,
+    borderRadius: 5,
+    textAlignVertical: 'top',
+  },
+  
 });
