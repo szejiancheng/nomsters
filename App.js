@@ -78,10 +78,10 @@ const unlockItem = async (itemKey) => {
   }
 };
 
-const isItemUnlocked = async (itemKey) => {
-  const userData = await getUserData();
-  return userData && userData.purchasedItems[itemKey];
-};
+// const isItemUnlocked = async (itemKey) => {
+//   const userData = await getUserData();
+//   return userData && userData.purchasedItems[itemKey];
+// };
 
 // Purchase Function
 const purchaseItem = async (itemKey, cost) => {
@@ -139,6 +139,8 @@ export default function App() {
   const [diaryModalVisible, setDiaryModalVisible] = useState(false);
   const [diaryPictures, setDiaryPictures] = useState([]);
   const [diaryPictureIndex, setDiaryPictureIndex] = useState(0);
+  const [diaryPictureOpacity] = useState(new Animated.Value(1));
+
 
 
   useEffect(() => {
@@ -242,6 +244,17 @@ export default function App() {
     setDiaryPictureIndex(pictures.length - 1);
     setDiaryModalVisible(true);
   };
+
+  const handleDiarySwipeGesture = ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationX > 50) {
+        handlePreviousPicture();
+      } else if (nativeEvent.translationX < -50) {
+        handleNextPicture();
+      }
+    }
+  };
+  
 
   // manualTest for clearing user data
   const manualTestClearUserData = async () => {
@@ -368,6 +381,25 @@ export default function App() {
       }).start();
     });
   };
+
+  const fadeIn = () => {
+    Animated.timing(diaryPictureOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+  
+  const fadeOut = (callback) => {
+    Animated.timing(diaryPictureOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      if (callback) callback();
+    });
+  };
+  
 
   // Take Picture Button Functionality
   const takePicture = async () => {
@@ -729,12 +761,25 @@ export default function App() {
 
   // Handle next and previous picture navigation
   const handleNextPicture = () => {
-    setDiaryPictureIndex((prevIndex) => Math.min(prevIndex + 1, diaryPictures.length - 1));
+    fadeOut(() => {
+      setDiaryPictureIndex((prevIndex) => {
+        const newIndex = Math.min(prevIndex + 1, diaryPictures.length - 1);
+        fadeIn();
+        return newIndex;
+      });
+    });
   };
-
+  
   const handlePreviousPicture = () => {
-    setDiaryPictureIndex((prevIndex) => Math.max(prevIndex - 1, 0));
+    fadeOut(() => {
+      setDiaryPictureIndex((prevIndex) => {
+        const newIndex = Math.max(prevIndex - 1, 0);
+        fadeIn();
+        return newIndex;
+      });
+    });
   };
+  
 
   // Health Bar Animations
   const animatedWidth = healthBarWidth.interpolate({
@@ -820,52 +865,56 @@ export default function App() {
         animationType="slide"
         onRequestClose={() => setDiaryModalVisible(false)}
       >
-        <View style={styles.diaryModalContainer}>
-          <View style={styles.diaryModalContent}>
-            <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
-              <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-            </TouchableOpacity>
-            {diaryPictures.length > 1 && (
-              <>
-                <TouchableOpacity
-                  style={styles.leftArrowButton}
-                  onPress={handlePreviousPicture}
-                  disabled={diaryPictureIndex === 0}
-                >
-                  <ExpoImage
-                    source={leftArrowIcon}
-                    style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.rightArrowButton}
-                  onPress={handleNextPicture}
-                  disabled={diaryPictureIndex === diaryPictures.length - 1}
-                >
-                  <ExpoImage
-                    source={rightArrowIcon}
-                    style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
-                  />
-                </TouchableOpacity>
-              </>
-            )}
-            {diaryPictures[diaryPictureIndex] ? (
-              <View style={styles.imageContainer}>
+        <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
+          <Animated.View style={styles.diaryModalContainer}>
+            <View style={styles.diaryModalContent}>
+              <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+                <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+              </TouchableOpacity>
+              {diaryPictures.length > 1 && (
+                <>
+                  <TouchableOpacity
+                    style={styles.leftArrowButton}
+                    onPress={handlePreviousPicture}
+                    disabled={diaryPictureIndex === 0}
+                  >
+                    <ExpoImage
+                      source={leftArrowIcon}
+                      style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.rightArrowButton}
+                    onPress={handleNextPicture}
+                    disabled={diaryPictureIndex === diaryPictures.length - 1}
+                  >
+                    <ExpoImage
+                      source={rightArrowIcon}
+                      style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+              {diaryPictures[diaryPictureIndex] ? (
+              <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
                 <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex] }} style={styles.diaryImage} />
-              </View>
-            ) : (
-              <View style={styles.picturePlaceholder}>
-                {/* Placeholder for picture */}
-              </View>
-            )}
-            <TextInput
-              style={styles.diaryTextInput}
-              placeholder="Write something..."
-              multiline
-            />
-          </View>
-        </View>
+              </Animated.View>
+
+              ) : (
+                <View style={styles.picturePlaceholder}>
+                  {/* Placeholder for picture */}
+                </View>
+              )}
+              <TextInput
+                style={styles.diaryTextInput}
+                placeholder="Write something..."
+                multiline
+              />
+            </View>
+          </Animated.View>
+        </PanGestureHandler>
       </Modal>
+
 
     </GestureHandlerRootView>
   );
