@@ -24,9 +24,12 @@ const soundIcon = require('./assets/icons/sound.png');
 const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
+const mountainsMusic = require('./assets/music/mountains.wav');
+const castleMusic = require('./assets/music/castle.wav');
+const cloudMusic = require('./assets/music/cloud.wav');
+const mystical1Music = require('./assets/music/mystical1.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
 const mysticalCropped1Image = require('./assets/backgrounds/Mystical_CROPPED1.png');
-const mysticalCropped2Image = require('./assets/backgrounds/Mystical_CROPPED2.png');
 const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.png');
 const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
 const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
@@ -34,7 +37,6 @@ const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 const allBackgrounds = [
   backgroundImage, bearClubImage, mountainsCropped1Image, 
   castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
-  mysticalCropped2Image 
 ];
 
 const USER_DATA_KEY = 'userData';
@@ -123,7 +125,7 @@ export default function App() {
   const [isCastleUnlocked, setIsCastleUnlocked] = useState(false);
   const [isCloudUnlocked, setIsCloudUnlocked] = useState(false);
   const [isMystical1Unlocked, setIsMystical1Unlocked] = useState(false);
-  const [isMystical2Unlocked, setIsMystical2Unlocked] = useState(false);
+
   const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
@@ -221,7 +223,7 @@ export default function App() {
         setIsCastleUnlocked(data.purchasedItems?.castle || false);
         setIsCloudUnlocked(data.purchasedItems?.cloud || false);
         setIsMystical1Unlocked(data.purchasedItems?.mystical1 || false);
-        setIsMystical2Unlocked(data.purchasedItems?.mystical2 || false);
+
         if (data.petName.trim() === '') {
           setIsDialogVisible(true);
         }
@@ -257,7 +259,7 @@ export default function App() {
       setIsCastleUnlocked(false);
       setIsCloudUnlocked(false);
       setIsMystical1Unlocked(false);
-      setIsMystical2Unlocked(false);
+
       setPurchasedItems({}); // Reset purchasedItems state after clearing data
       setPetName(''); // Reset petName state after clearing data
       setIsDialogVisible(true); // Show dialog to set pet name after clearing data
@@ -419,9 +421,7 @@ export default function App() {
       if (userData?.purchasedItems?.mystical1) {
         unlockedBackgrounds.push(mysticalCropped1Image);
       }
-      if (userData?.purchasedItems?.mystical2) {
-        unlockedBackgrounds.push(mysticalCropped2Image);
-      }
+
 
       if (nativeEvent.translationX > 50) {
         // Handle swipe right
@@ -503,9 +503,7 @@ export default function App() {
     if (userData?.purchasedItems?.mystical1) {
       unlockedBackgrounds.push(mysticalCropped1Image);
     }
-    if (userData?.purchasedItems?.mystical2) {
-      unlockedBackgrounds.push(mysticalCropped2Image);
-    }
+
   
     setInventoryContent(
       <View style={styles.backgroundThumbnailsWrapper}>
@@ -532,13 +530,22 @@ export default function App() {
       if (sound) {
         await sound.unloadAsync();
       }
-
+  
+      const backgroundMusic = [
+        beachMusic,       // 0 - Beach
+        bearClubMusic,    // 1 - Bear Club
+        mountainsMusic,   // 2 - Mountains
+        castleMusic,      // 3 - Castle
+        cloudMusic,       // 4 - Cloud
+        mystical1Music,   // 5 - Mystical
+      ];
+  
       const { sound: newSound } = await Audio.Sound.createAsync(
-        backgroundIndex === 0 ? beachMusic : bearClubMusic
+        backgroundMusic[backgroundIndex]
       );
-
+  
       setSound(newSound);
-
+  
       await newSound.setIsLoopingAsync(true);
       if (musicEnabled) {
         await newSound.playAsync();
@@ -547,7 +554,6 @@ export default function App() {
       console.error("Error loading or playing sound:", error);
     }
   };
-
   // Handle camera permissions
   if (!permission) {
     return <View />;
@@ -701,18 +707,12 @@ export default function App() {
     },
     {
       key: 'mystical1',
-      name: 'Mystical 1',
+      name: 'Mystical',
       cost: 300,
       image: mysticalCropped1Image,
       isUnlocked: isMystical1Unlocked,
     },
-    {
-      key: 'mystical2',
-      name: 'Mystical 2',
-      cost: 300,
-      image: mysticalCropped2Image,
-      isUnlocked: isMystical2Unlocked,
-    },
+
     // Add more items here
   ];
 
@@ -736,9 +736,7 @@ export default function App() {
       if (itemKey === 'mystical1') {
         setIsMystical1Unlocked(true);
       }
-      if (itemKey === 'mystical2') {
-        setIsMystical2Unlocked(true);
-      }
+
       // Update state for other items if necessary
     }
   };
