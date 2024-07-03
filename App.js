@@ -1229,8 +1229,9 @@ const styles = StyleSheet.create({
     fontSize: 50,
     color: '#d3b683',
     fontWeight: 'bold',
-    marginBottom: 20,
-    marginTop: 45,
+    marginBottom: 10,
+    marginTop: 70,
+    fontFamily: 'eightbit',
   },
   inventoryCloseButton: {
     position: 'absolute',
