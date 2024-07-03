@@ -73,3 +73,65 @@ async function deleteData(endpoint) {
     }
 }
 
+
+async function query(filename) {
+	const data = fs.readFileSync(filename);
+	const response = await fetch(
+		"https://api-inference.huggingface.co/models/nateraw/food",
+		{
+			headers: {
+				Authorization: "Bearer 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", //secret API key please do not copy
+				"Content-Type": "application/json",
+			},
+			method: "POST",
+			body: data,
+		}
+	);
+    console.log(response)
+	const result = await response.json();
+	return result;
+}
+
+//stub for simulating query
+async function queryStub(filename) {
+	const data = fs.readFileSync(filename);
+	data
+	await sleep(5000) //simulate API call
+	const predictions = [
+		{ "label": "french_onion_soup", "score": 0.2141202688217163, "calories": 100 },
+		{ "label": "hot_and_sour_soup", "score": 0.09142252057790756, "calories": 150 },
+		{ "label": "miso_soup", "score": 0.06172953546047211, "calories": 200 },
+		{ "label": "bread_pudding", "score": 0.04476030170917511, "calories": 250 },
+		{ "label": "chicken_curry", "score": 0.02886212430894375, "calories": 300 }
+	]
+	return predictions;
+}
+
+//stub for simulating error encountered during query
+async function queryErrorStub(filename) {
+	const data = fs.readFileSync(filename);
+	data
+	await sleep(5000) //simulate API call
+	throw new Error('Error in network response');
+	//Jak prompt user to try again in a few seconds
+}
+
+//stub for simulating submitting a new label
+async function submitNewLabelStub(filename, userLabel) {
+	filename
+	userLabel
+	//send some post request to server saying to log this image and the new
+	//label they provide, note to user that all data will be anonymous
+	await sleep(2000) //simulate API call
+	return
+}
+
+//stub for simulating encountering an error in submitting a new label
+async function submitNewLabelErrorStub(filename, userLabel) {
+	const data = fs.readFileSync(filename);
+	data
+	userLabel
+	await sleep(2000) //simulate API call
+	throw new Error('Error in network response');
+	//Prompt user that data submission was unsucessful, aborting submission
+}
