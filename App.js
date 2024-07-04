@@ -1,13 +1,16 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import React, { useState, useEffect, useRef } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
+
+// API
+import { query, queryStub, queryErrorStub } from './util/ApiClient.js';
 
 // ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
@@ -35,13 +38,14 @@ const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.p
 const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
 const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 const diaryIcon = require('./assets/icons/diary.png');
+const loadingGif = require('./assets/icons/loading.gif');
 
 const rightArrowIcon = require('./assets/icons/rightarrow.png');
 const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
 const allBackgrounds = [
   backgroundImage, bearClubImage, mountainsCropped1Image, 
-  castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
+  castleCropped1Image, cloudCropped1Image, mysticalCropped1Image, 
 ];
 
 const USER_DATA_KEY = 'userData';
@@ -156,6 +160,17 @@ export default function App() {
   const [diaryPictures, setDiaryPictures] = useState([]);
   const [diaryPictureIndex, setDiaryPictureIndex] = useState(0);
   const [diaryPictureOpacity] = useState(new Animated.Value(1));
+
+  // API
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const formatLabel = (label) => {
+    return label.replace(/_/g, ' ');
+  };
+
+  // New state variables for custom food input
+  const [isCustomInputVisible, setIsCustomInputVisible] = useState(false);
+  const [customFoodName, setCustomFoodName] = useState('');
+  const [customCalories, setCustomCalories] = useState('');
 
   useEffect(() => {
     if (inventoryVisible) {
@@ -272,6 +287,61 @@ export default function App() {
         handleNextPicture();
       }
     }
+  };
+
+  // Diary option selection
+  const handleOptionSelect = async (selectedLabel) => {
+    if (selectedLabel === 'Other') {
+      setIsCustomInputVisible(true);
+      return;
+    }
+
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    const updatedPictures = pictures.map((pic, index) => {
+      if (index === diaryPictureIndex) {
+        const selectedPrediction = JSON.parse(pic.apiData).find(prediction => prediction.label === selectedLabel);
+        return {
+          ...pic,
+          selectedLabel,
+          calories: selectedPrediction ? selectedPrediction.calories : null,
+          labels: null // Remove labels after selection
+        };
+      }
+      return pic;
+    });
+
+    await updateUserData({
+      ...userData,
+      pictures: updatedPictures,
+    });
+
+    setDiaryPictures(updatedPictures);
+  };
+
+  // Handle custom food submission
+  const handleCustomFoodSubmit = async () => {
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    const updatedPictures = pictures.map((pic, index) => {
+      if (index === diaryPictureIndex) {
+        return {
+          ...pic,
+          selectedLabel: customFoodName,
+          calories: customCalories,
+          labels: null
+        };
+      }
+      return pic;
+    });
+
+    await updateUserData({
+      ...userData,
+      pictures: updatedPictures,
+    });
+
+    setDiaryPictures(updatedPictures);
+    setIsCustomInputVisible(false);
   };
 
   // manualTest for clearing user data
@@ -419,57 +489,55 @@ export default function App() {
     }
   };
 
-// Swipe gesture for background change
-const handleGesture = async ({ nativeEvent }) => {
-  if (nativeEvent.state === State.END) {
-    const userData = await getUserData();
-    const unlockedBackgrounds = [backgroundImage]; // Default background
+  // Swipe gesture for background change
+  const handleGesture = async ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      const userData = await getUserData();
+      const unlockedBackgrounds = [backgroundImage]; // Default background
 
-    if (userData?.purchasedItems?.bearClub) {
-      unlockedBackgrounds.push(bearClubImage);
-    }
-    if (userData?.purchasedItems?.mountains) {
-      unlockedBackgrounds.push(mountainsCropped1Image);
-    }
-    if (userData?.purchasedItems?.castle) {
-      unlockedBackgrounds.push(castleCropped1Image);
-    }
-    if (userData?.purchasedItems?.cloud) {
-      unlockedBackgrounds.push(cloudCropped1Image);
-    }
-    if (userData?.purchasedItems?.mystical1) {
-      unlockedBackgrounds.push(mysticalCropped1Image);
-    }
+      if (userData?.purchasedItems?.bearClub) {
+        unlockedBackgrounds.push(bearClubImage);
+      }
+      if (userData?.purchasedItems?.mountains) {
+        unlockedBackgrounds.push(mountainsCropped1Image);
+      }
+      if (userData?.purchasedItems?.castle) {
+        unlockedBackgrounds.push(castleCropped1Image);
+      }
+      if (userData?.purchasedItems?.cloud) {
+        unlockedBackgrounds.push(cloudCropped1Image);
+      }
+      if (userData?.purchasedItems?.mystical1) {
+        unlockedBackgrounds.push(mysticalCropped1Image);
+      }
 
-    if (nativeEvent.translationX > 50) {
-      // Handle swipe right
-      fadeOut(fadeAnim, () => {
-        setBackgroundIndex((prevIndex) => {
-          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
-          const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
-          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+      if (nativeEvent.translationX > 50) {
+        // Handle swipe right
+        fadeOut(fadeAnim, () => {
+          setBackgroundIndex((prevIndex) => {
+            const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+            const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+            return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+          });
+          fadeIn(fadeAnim);
         });
-        fadeIn(fadeAnim);
-      });
-    } else if (nativeEvent.translationX < -50) {
-      // Handle swipe left
-      fadeOut(fadeAnim, () => {
-        setBackgroundIndex((prevIndex) => {
-          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
-          const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
-          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+      } else if (nativeEvent.translationX < -50) {
+        // Handle swipe left
+        fadeOut(fadeAnim, () => {
+          setBackgroundIndex((prevIndex) => {
+            const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+            const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
+            return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+          });
+          fadeIn(fadeAnim);
         });
-        fadeIn(fadeAnim);
-      });
-    } else if (nativeEvent.translationY < -50) {
-      // Handle swipe up
-      setInventoryVisible(true);
-      setShowInventoryScreen(true);
+      } else if (nativeEvent.translationY < -50) {
+        // Handle swipe up
+        setInventoryVisible(true);
+        setShowInventoryScreen(true);
+      }
     }
-  }
-};
-
-  
+  };
 
   // custom inventory gesture that if you swipe down while in inventory it will close inventory
   const handleInventoryGesture = ({ nativeEvent }) => {
@@ -510,7 +578,6 @@ const handleGesture = async ({ nativeEvent }) => {
       unlockedBackgrounds.push(mysticalCropped1Image);
     }
 
-  
     setInventoryContent(
       <View style={styles.backgroundThumbnailsWrapper}>
         <View style={styles.backgroundThumbnailsContainer}>
@@ -528,7 +595,6 @@ const handleGesture = async ({ nativeEvent }) => {
       </View>
     );
   };
-  
 
   // Play background music based on background index
   const playBackgroundMusic = async () => {
@@ -536,7 +602,7 @@ const handleGesture = async ({ nativeEvent }) => {
       if (sound) {
         await sound.unloadAsync();
       }
-  
+
       const backgroundMusic = [
         beachMusic,       // 0 - Beach
         bearClubMusic,    // 1 - Bear Club
@@ -545,13 +611,13 @@ const handleGesture = async ({ nativeEvent }) => {
         cloudMusic,       // 4 - Cloud
         mystical1Music,   // 5 - Mystical
       ];
-  
+
       const { sound: newSound } = await Audio.Sound.createAsync(
         backgroundMusic[backgroundIndex]
       );
-  
+
       setSound(newSound);
-  
+
       await newSound.setIsLoopingAsync(true);
       if (musicEnabled) {
         await newSound.playAsync();
@@ -560,6 +626,7 @@ const handleGesture = async ({ nativeEvent }) => {
       console.error("Error loading or playing sound:", error);
     }
   };
+
   // Handle camera permissions
   if (!permission) {
     return <View />;
@@ -799,56 +866,77 @@ const handleGesture = async ({ nativeEvent }) => {
   );
 
   // Analyse Picture Feature (to add send to API)
-  const handleAnalysePicture = async () => {
-    try {
-      const filename = capturedImage.split('/').pop();
-      const newPath = `${FileSystem.documentDirectory}${filename}`;
-      await FileSystem.moveAsync({
-        from: capturedImage,
-        to: newPath,
-      });
+const handleAnalysePicture = async () => {
+  try {
+    setIsAnalysing(true);
+    const filename = capturedImage.split('/').pop();
+    const newPath = `${FileSystem.documentDirectory}${filename}`;
+    await FileSystem.moveAsync({
+      from: capturedImage,
+      to: newPath,
+    });
 
-      const currentDate = new Date();
-      const hours = currentDate.getHours();
-      let meal = '';
-      
-      if (hours >= 6 && hours < 11) {
-        meal = 'Breakfast';
-      } else if (hours >= 11 && hours < 15) {
-        meal = 'Lunch';
-      } else if (hours >= 15 && hours < 18) {
-        meal = 'Tea Time Snack';
-      } else if (hours >= 18 && hours < 22) {
-        meal = 'Dinner';
-      } else {
-        meal = 'Supper';
-      }
+    const currentDate = new Date();
+    const hours = currentDate.getHours();
+    let meal = '';
+    
+    if (hours >= 6 && hours < 11) {
+      meal = 'Breakfast';
+    } else if (hours >= 11 && hours < 15) {
+      meal = 'Lunch';
+    } else if (hours >= 15 && hours < 18) {
+      meal = 'Tea Time Snack';
+    } else if (hours >= 18 && hours < 22) {
+      meal = 'Dinner';
+    } else {
+      meal = 'Supper';
+    }
 
-      const pictureData = {
-        uri: newPath,
-        date: currentDate.toLocaleDateString(), // Save the date as a string
-        time: currentDate.toLocaleTimeString(), // Save the time as a string
-        meal, // Save the meal type as a string
-      };
+    const pictureData = {
+      uri: newPath,
+      date: currentDate.toLocaleDateString(), 
+      time: currentDate.toLocaleTimeString(), 
+      meal, // Save the meal type as a string
+      apiData: '', // Placeholder for API data
+      labels: [], // Placeholder for API labels
+    };
 
-      const userData = await getUserData();
-      const pictures = userData?.pictures || [];
-      const updatedPictures = [...pictures, pictureData];
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    const updatedPictures = [...pictures, pictureData];
+
+    await updateUserData({
+      ...userData,
+      pictures: updatedPictures,
+    });
+
+    setDiaryPictures(updatedPictures);
+    setDiaryPictureIndex(updatedPictures.length - 1);
+    setDiaryModalVisible(true);
+
+    const apiResponse = await queryStub(newPath); // or query(newPath) if using the real API
+    if (apiResponse) {
+      const labels = apiResponse.map(item => item.label);
+      pictureData.apiData = JSON.stringify(apiResponse, null, 2); 
+      pictureData.labels = labels; 
+      const updatedPicturesWithApiData = updatedPictures.map((pic) => 
+        pic.uri === pictureData.uri ? pictureData : pic
+      );
 
       await updateUserData({
         ...userData,
-        pictures: updatedPictures,
+        pictures: updatedPicturesWithApiData,
       });
-
-      setDiaryPictures(updatedPictures);
-      setDiaryPictureIndex(updatedPictures.length - 1);
-      setDiaryModalVisible(true);
-    } catch (error) {
-      console.error('Error analyzing picture:', error);
-    } finally {
-      setCapturedImage(null);
+      setDiaryPictures(updatedPicturesWithApiData);
     }
-  };
+  } catch (error) {
+    console.error('Error analyzing picture:', error);
+  } finally {
+    setCapturedImage(null);
+    setIsAnalysing(false);
+  }
+};
+  
 
   // Handle next and previous picture navigation
   const handleNextPicture = () => {
@@ -860,7 +948,7 @@ const handleGesture = async ({ nativeEvent }) => {
       });
     });
   };
-  
+
   const handlePreviousPicture = () => {
     fadeOut(diaryPictureOpacity, () => {
       setDiaryPictureIndex((prevIndex) => {
@@ -914,6 +1002,114 @@ const handleGesture = async ({ nativeEvent }) => {
     </PanGestureHandler>
   );
 
+  // Diary Modal Content
+  const renderDiaryModalContent = () => (
+  <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={[
+          styles.diaryModalContainer,
+        ]}
+        behavior="padding"
+      >
+        <View style={[
+          styles.diaryModalContent,
+          isAnalysing && { backgroundColor: 'black' },
+        ]}>
+          <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+            <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+          </TouchableOpacity>
+          {diaryPictures.length > 1 && (
+            <>
+              <TouchableOpacity
+                style={styles.leftArrowButton}
+                onPress={handlePreviousPicture}
+                disabled={diaryPictureIndex === 0}
+              >
+                <ExpoImage
+                  source={leftArrowIcon}
+                  style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rightArrowButton}
+                onPress={handleNextPicture}
+                disabled={diaryPictureIndex === diaryPictures.length - 1}
+              >
+                <ExpoImage
+                  source={rightArrowIcon}
+                  style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+            </>
+          )}
+          {diaryPictures[diaryPictureIndex] ? (
+            <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
+              <View style={styles.dateMealContainer}>
+                <Text style={styles.diaryDateText}>
+                  {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
+                </Text>
+              </View>
+              <View style={styles.dateTimeContainer}>
+                <Text style={styles.diaryTimeText}>
+                  {diaryPictures[diaryPictureIndex].time}
+                </Text>
+              </View>
+              <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
+            </Animated.View>
+          ) : (
+            <View style={styles.picturePlaceholder}></View>
+          )}
+          {isAnalysing ? (
+            <ExpoImage source={loadingGif} style={styles.loadingGif} />
+          ) : (
+            diaryPictures[diaryPictureIndex] && diaryPictures[diaryPictureIndex].selectedLabel && (
+              <Text style={styles.diaryTextInput}>
+                {`${formatLabel(diaryPictures[diaryPictureIndex].selectedLabel)} - ${diaryPictures[diaryPictureIndex].calories} calories`}
+              </Text>
+            )
+          )}
+          {!isCustomInputVisible && (
+            <>
+              {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
+                <TouchableOpacity key={index} style={styles.labelOptionButton} onPress={() => handleOptionSelect(label)}>
+                  <Text style={styles.diaryDateText}>{formatLabel(label)}</Text>
+                </TouchableOpacity>
+              ))}
+              {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && (
+                <TouchableOpacity style={styles.labelOptionButton} onPress={() => handleOptionSelect('Other')}>
+                  <Text style={styles.diaryDateText}>Other...</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+          {isCustomInputVisible && (
+            <>
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter food name"
+                value={customFoodName}
+                onChangeText={setCustomFoodName}
+              />
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter calories"
+                value={customCalories}
+                onChangeText={setCustomCalories}
+                keyboardType="numeric"
+              />
+              <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleCustomFoodSubmit}>
+                <Text style={styles.customFoodSubmitButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
+  </PanGestureHandler>
+);
+
+
   // App Structure (With Gesture Handler as the base)
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -929,7 +1125,6 @@ const handleGesture = async ({ nativeEvent }) => {
           </>
         )}
       </Animated.View>
-
       <Modal
         visible={isDialogVisible}
         transparent={true}
@@ -955,62 +1150,8 @@ const handleGesture = async ({ nativeEvent }) => {
         animationType="slide"
         onRequestClose={() => setDiaryModalVisible(false)}
       >
-        <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
-          <Animated.View style={styles.diaryModalContainer}>
-            <View style={styles.diaryModalContent}>
-              <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
-                <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-              </TouchableOpacity>
-              {diaryPictures.length > 1 && (
-                <>
-                  <TouchableOpacity
-                    style={styles.leftArrowButton}
-                    onPress={handlePreviousPicture}
-                    disabled={diaryPictureIndex === 0}
-                  >
-                    <ExpoImage
-                      source={leftArrowIcon}
-                      style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.rightArrowButton}
-                    onPress={handleNextPicture}
-                    disabled={diaryPictureIndex === diaryPictures.length - 1}
-                  >
-                    <ExpoImage
-                      source={rightArrowIcon}
-                      style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
-                    />
-                  </TouchableOpacity>
-                </>
-              )}
-              {diaryPictures[diaryPictureIndex] ? (
-                <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
-                  <View style={styles.dateMealContainer}>
-                    <Text style={styles.diaryDateText}>
-                      {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
-                    </Text>
-                    </View>
-                    <View style={styles.dateTimeContainer}>
-                    <Text style={styles.diaryTimeText}>
-                    {diaryPictures[diaryPictureIndex].time}
-                  </Text>
-                  </View>
-                  <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
-
-                </Animated.View>
-              ) : (
-                <View style={styles.picturePlaceholder}></View>
-              )}
-              <Text style={styles.diaryTextInput}>
-                API Food data goes here.
-              </Text>
-            </View>
-          </Animated.View>
-        </PanGestureHandler>
+        {renderDiaryModalContent()}
       </Modal>
-
     </GestureHandlerRootView>
   );
 }
@@ -1505,7 +1646,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   diaryModalContent: {
-    width: '80%',
+    width: '90%',
     padding: 20,
     backgroundColor: '#F8E5CE',
     borderRadius: 10,
@@ -1549,7 +1690,7 @@ const styles = StyleSheet.create({
   },
   diaryImage: {
     width: '100%',
-    height: '90%', // This ensures that only the top 2/3 of the image is visible
+    height: '100%',
     resizeMode: 'cover',
   },
   picturePlaceholder: {
@@ -1569,6 +1710,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 5,
     textAlignVertical: 'top',
+    fontSize: 25,
     fontFamily: 'eightbit',
   },
   diaryDateText: {
@@ -1596,4 +1738,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: -10,
   },
+  labelOptionButton: {
+    height: 45,
+    padding: 15,
+    marginBottom: 5,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customFoodInput: {
+    width: '80%',
+    padding: 10,
+    borderWidth: 3,
+    borderRadius: 5,
+    fontSize: 20,
+    fontFamily: 'eightbit',
+    marginTop: 20,
+  },
+  customFoodSubmitButton: {
+    backgroundColor: '#d3c683',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  customFoodSubmitButtonText: {
+    fontSize: 25,
+    color: '#000',
+    fontFamily: 'eightbit',
+  },
+  loadingGif: {
+    width: 200,
+    height: 200,
+  },
 });
+
+
