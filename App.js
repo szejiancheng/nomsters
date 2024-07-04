@@ -811,7 +811,7 @@ export default function App() {
         from: capturedImage,
         to: newPath,
       });
-
+  
       const currentDate = new Date();
       const hours = currentDate.getHours();
       let meal = '';
@@ -827,36 +827,39 @@ export default function App() {
       } else {
         meal = 'Supper';
       }
-
+  
       const pictureData = {
         uri: newPath,
         date: currentDate.toLocaleDateString(), // Save the date as a string
         time: currentDate.toLocaleTimeString(), // Save the time as a string
         meal, // Save the meal type as a string
         apiData: '', // Placeholder for API data
+        labels: [], // Placeholder for API labels
       };
-
+  
       const userData = await getUserData();
       const pictures = userData?.pictures || [];
       const updatedPictures = [...pictures, pictureData];
-
+  
       await updateUserData({
         ...userData,
         pictures: updatedPictures,
       });
-
+  
       setDiaryPictures(updatedPictures);
       setDiaryPictureIndex(updatedPictures.length - 1);
       setDiaryModalVisible(true);
-
+  
       // Call the query function and update the pictureData with the response
       const apiResponse = await queryStub(newPath); // or query(newPath) if using the real API
       if (apiResponse) {
+        const labels = apiResponse.map(item => item.label);
         pictureData.apiData = JSON.stringify(apiResponse, null, 2); // Convert the response to a string
+        pictureData.labels = labels; // Add labels to picture data
         const updatedPicturesWithApiData = updatedPictures.map((pic) => 
           pic.uri === pictureData.uri ? pictureData : pic
         );
-
+  
         await updateUserData({
           ...userData,
           pictures: updatedPicturesWithApiData,
@@ -869,6 +872,7 @@ export default function App() {
       setCapturedImage(null);
     }
   };
+  
 
   // Handle next and previous picture navigation
   const handleNextPicture = () => {
@@ -1023,9 +1027,14 @@ export default function App() {
               ) : (
                 <View style={styles.picturePlaceholder}></View>
               )}
-              <Text style={styles.diaryTextInput}>
-                {diaryPictures[diaryPictureIndex].apiData ? diaryPictures[diaryPictureIndex].apiData : 'API Food data goes here.'}
-              </Text>
+                          {diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
+              <TouchableOpacity key={index} style={styles.button}>
+                <Text>{label}</Text>
+              </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.button}>
+              <Text>Incorrect</Text>
+            </TouchableOpacity>
             </View>
           </Animated.View>
         </PanGestureHandler>
