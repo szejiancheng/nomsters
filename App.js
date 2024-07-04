@@ -38,6 +38,7 @@ const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.p
 const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
 const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 const diaryIcon = require('./assets/icons/diary.png');
+const loadingGif = require('./assets/icons/loading.gif');
 
 const rightArrowIcon = require('./assets/icons/rightarrow.png');
 const leftArrowIcon = require('./assets/icons/leftarrow.png');
@@ -1003,102 +1004,111 @@ const handleAnalysePicture = async () => {
 
   // Diary Modal Content
   const renderDiaryModalContent = () => (
-    <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView style={styles.diaryModalContainer} behavior="padding">
-          <View style={styles.diaryModalContent}>
-            <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
-              <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-            </TouchableOpacity>
-            {diaryPictures.length > 1 && (
-              <>
-                <TouchableOpacity
-                  style={styles.leftArrowButton}
-                  onPress={handlePreviousPicture}
-                  disabled={diaryPictureIndex === 0}
-                >
-                  <ExpoImage
-                    source={leftArrowIcon}
-                    style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.rightArrowButton}
-                  onPress={handleNextPicture}
-                  disabled={diaryPictureIndex === diaryPictures.length - 1}
-                >
-                  <ExpoImage
-                    source={rightArrowIcon}
-                    style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
-                  />
-                </TouchableOpacity>
-              </>
-            )}
-            {diaryPictures[diaryPictureIndex] ? (
-              <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
-                <View style={styles.dateMealContainer}>
-                  <Text style={styles.diaryDateText}>
-                    {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
-                  </Text>
-                </View>
-                <View style={styles.dateTimeContainer}>
-                  <Text style={styles.diaryTimeText}>
-                    {diaryPictures[diaryPictureIndex].time}
-                  </Text>
-                </View>
-                <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
-              </Animated.View>
-            ) : (
-              <View style={styles.picturePlaceholder}></View>
-            )}
-            {isAnalysing ? (
-              <Text style={styles.diaryTextInput}>Analysing...</Text>
-            ) : (
-              diaryPictures[diaryPictureIndex] && diaryPictures[diaryPictureIndex].selectedLabel && (
-                <Text style={styles.diaryTextInput}>
-                  {`${formatLabel(diaryPictures[diaryPictureIndex].selectedLabel)} - ${diaryPictures[diaryPictureIndex].calories} calories`}
+  <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={[
+          styles.diaryModalContainer,
+        ]}
+        behavior="padding"
+      >
+        <View style={[
+          styles.diaryModalContent,
+          isAnalysing && { backgroundColor: 'black' },
+        ]}>
+          <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+            <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
+          </TouchableOpacity>
+          {diaryPictures.length > 1 && (
+            <>
+              <TouchableOpacity
+                style={styles.leftArrowButton}
+                onPress={handlePreviousPicture}
+                disabled={diaryPictureIndex === 0}
+              >
+                <ExpoImage
+                  source={leftArrowIcon}
+                  style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rightArrowButton}
+                onPress={handleNextPicture}
+                disabled={diaryPictureIndex === diaryPictures.length - 1}
+              >
+                <ExpoImage
+                  source={rightArrowIcon}
+                  style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+            </>
+          )}
+          {diaryPictures[diaryPictureIndex] ? (
+            <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
+              <View style={styles.dateMealContainer}>
+                <Text style={styles.diaryDateText}>
+                  {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
                 </Text>
-              )
-            )}
-            {!isCustomInputVisible && (
-  <>
-    {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
-      <TouchableOpacity key={index} style={styles.labelOptionButton} onPress={() => handleOptionSelect(label)}>
-        <Text style={styles.diaryDateText}>{formatLabel(label)}</Text>
-      </TouchableOpacity>
-    ))}
-    {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && (
-      <TouchableOpacity style={styles.labelOptionButton} onPress={() => handleOptionSelect('Other')}>
-        <Text style={styles.diaryDateText}>Other...</Text>
-      </TouchableOpacity>
-    )}
-  </>
-)}
-            {isCustomInputVisible && (
-              <>
-                <TextInput
-                  style={styles.customFoodInput}
-                  placeholder="Enter food name"
-                  value={customFoodName}
-                  onChangeText={setCustomFoodName}
-                />
-                <TextInput
-                  style={styles.customFoodInput}
-                  placeholder="Enter calories"
-                  value={customCalories}
-                  onChangeText={setCustomCalories}
-                  keyboardType="numeric"
-                />
-                <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleCustomFoodSubmit}>
-                  <Text style={styles.customFoodSubmitButtonText}>Submit</Text>
+              </View>
+              <View style={styles.dateTimeContainer}>
+                <Text style={styles.diaryTimeText}>
+                  {diaryPictures[diaryPictureIndex].time}
+                </Text>
+              </View>
+              <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
+            </Animated.View>
+          ) : (
+            <View style={styles.picturePlaceholder}></View>
+          )}
+          {isAnalysing ? (
+            <ExpoImage source={loadingGif} style={styles.loadingGif} />
+          ) : (
+            diaryPictures[diaryPictureIndex] && diaryPictures[diaryPictureIndex].selectedLabel && (
+              <Text style={styles.diaryTextInput}>
+                {`${formatLabel(diaryPictures[diaryPictureIndex].selectedLabel)} - ${diaryPictures[diaryPictureIndex].calories} calories`}
+              </Text>
+            )
+          )}
+          {!isCustomInputVisible && (
+            <>
+              {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
+                <TouchableOpacity key={index} style={styles.labelOptionButton} onPress={() => handleOptionSelect(label)}>
+                  <Text style={styles.diaryDateText}>{formatLabel(label)}</Text>
                 </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-    </PanGestureHandler>
-  );
+              ))}
+              {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && (
+                <TouchableOpacity style={styles.labelOptionButton} onPress={() => handleOptionSelect('Other')}>
+                  <Text style={styles.diaryDateText}>Other...</Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+          {isCustomInputVisible && (
+            <>
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter food name"
+                value={customFoodName}
+                onChangeText={setCustomFoodName}
+              />
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter calories"
+                value={customCalories}
+                onChangeText={setCustomCalories}
+                keyboardType="numeric"
+              />
+              <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleCustomFoodSubmit}>
+                <Text style={styles.customFoodSubmitButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
+  </PanGestureHandler>
+);
+
 
   // App Structure (With Gesture Handler as the base)
   return (
@@ -1757,6 +1767,10 @@ const styles = StyleSheet.create({
     fontSize: 25,
     color: '#000',
     fontFamily: 'eightbit',
+  },
+  loadingGif: {
+    width: 200,
+    height: 200,
   },
 });
 
