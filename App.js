@@ -1,7 +1,7 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TouchableOpacity, Animated, Button, Dimensions, Modal, TextInput } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import React, { useState, useEffect, useRef } from 'react';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -161,10 +161,15 @@ export default function App() {
   const [diaryPictureOpacity] = useState(new Animated.Value(1));
 
   // API
-    const [isAnalysing, setIsAnalysing] = useState(false);
-    const formatLabel = (label) => {
-      return label.replace(/_/g, ' ');
-    };
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const formatLabel = (label) => {
+    return label.replace(/_/g, ' ');
+  };
+
+  // New state variables for custom food input
+  const [isCustomInputVisible, setIsCustomInputVisible] = useState(false);
+  const [customFoodName, setCustomFoodName] = useState('');
+  const [customCalories, setCustomCalories] = useState('');
 
   useEffect(() => {
     if (inventoryVisible) {
@@ -285,6 +290,11 @@ export default function App() {
 
   // Diary option selection
   const handleOptionSelect = async (selectedLabel) => {
+    if (selectedLabel === 'Other') {
+      setIsCustomInputVisible(true);
+      return;
+    }
+
     const userData = await getUserData();
     const pictures = userData?.pictures || [];
     const updatedPictures = pictures.map((pic, index) => {
@@ -299,15 +309,40 @@ export default function App() {
       }
       return pic;
     });
-  
+
     await updateUserData({
       ...userData,
       pictures: updatedPictures,
     });
-  
+
     setDiaryPictures(updatedPictures);
   };
-  
+
+  // Handle custom food submission
+  const handleCustomFoodSubmit = async () => {
+    const userData = await getUserData();
+    const pictures = userData?.pictures || [];
+    const updatedPictures = pictures.map((pic, index) => {
+      if (index === diaryPictureIndex) {
+        return {
+          ...pic,
+          selectedLabel: customFoodName,
+          calories: customCalories,
+          labels: null
+        };
+      }
+      return pic;
+    });
+
+    await updateUserData({
+      ...userData,
+      pictures: updatedPictures,
+    });
+
+    setDiaryPictures(updatedPictures);
+    setIsCustomInputVisible(false);
+  };
+
   // manualTest for clearing user data
   const manualTestClearUserData = async () => {
     try {
@@ -858,8 +893,8 @@ const handleAnalysePicture = async () => {
 
     const pictureData = {
       uri: newPath,
-      date: currentDate.toLocaleDateString(), // Save the date as a string
-      time: currentDate.toLocaleTimeString(), // Save the time as a string
+      date: currentDate.toLocaleDateString(), 
+      time: currentDate.toLocaleTimeString(), 
       meal, // Save the meal type as a string
       apiData: '', // Placeholder for API data
       labels: [], // Placeholder for API labels
@@ -878,12 +913,11 @@ const handleAnalysePicture = async () => {
     setDiaryPictureIndex(updatedPictures.length - 1);
     setDiaryModalVisible(true);
 
-    // Call the query function and update the pictureData with the response
     const apiResponse = await queryStub(newPath); // or query(newPath) if using the real API
     if (apiResponse) {
       const labels = apiResponse.map(item => item.label);
-      pictureData.apiData = JSON.stringify(apiResponse, null, 2); // Convert the response to a string
-      pictureData.labels = labels; // Add labels to picture data
+      pictureData.apiData = JSON.stringify(apiResponse, null, 2); 
+      pictureData.labels = labels; 
       const updatedPicturesWithApiData = updatedPictures.map((pic) => 
         pic.uri === pictureData.uri ? pictureData : pic
       );
@@ -971,74 +1005,91 @@ const handleAnalysePicture = async () => {
   const renderDiaryModalContent = () => (
     <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
       <Animated.View style={styles.diaryModalContainer}>
-      <View style={styles.diaryModalContent}>
-        <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
-          <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
-        </TouchableOpacity>
-        {diaryPictures.length > 1 && (
-          <>
-            <TouchableOpacity
-              style={styles.leftArrowButton}
-              onPress={handlePreviousPicture}
-              disabled={diaryPictureIndex === 0}
-            >
-              <ExpoImage
-                source={leftArrowIcon}
-                style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.rightArrowButton}
-              onPress={handleNextPicture}
-              disabled={diaryPictureIndex === diaryPictures.length - 1}
-            >
-              <ExpoImage
-                source={rightArrowIcon}
-                style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
-              />
-            </TouchableOpacity>
-          </>
-        )}
-        {diaryPictures[diaryPictureIndex] ? (
-          <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
-            <View style={styles.dateMealContainer}>
-              <Text style={styles.diaryDateText}>
-                {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
-              </Text>
-            </View>
-            <View style={styles.dateTimeContainer}>
-              <Text style={styles.diaryTimeText}>
-                {diaryPictures[diaryPictureIndex].time}
-              </Text>
-            </View>
-            <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
-          </Animated.View>
-        ) : (
-          <View style={styles.picturePlaceholder}></View>
-        )}
-        {isAnalysing ? (
-          <Text style={styles.diaryTextInput}>Analysing...</Text>
-        ) : (
-          diaryPictures[diaryPictureIndex].selectedLabel && (
-            <Text style={styles.diaryTextInput}>
-              {`${formatLabel(diaryPictures[diaryPictureIndex].selectedLabel)} - ${diaryPictures[diaryPictureIndex].calories} calories`}
-            </Text>
-          )
-        )}
-        {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
-          <TouchableOpacity key={index} style={styles.button} onPress={() => handleOptionSelect(label)}>
-            <Text>{formatLabel(label)}</Text>
+        <View style={styles.diaryModalContent}>
+          <TouchableOpacity style={styles.diaryCloseButton} onPress={() => setDiaryModalVisible(false)}>
+            <ExpoImage source={closeButtonIcon} style={styles.closeButtonIcon} />
           </TouchableOpacity>
-        ))}
-        {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && (
-          <TouchableOpacity style={styles.button} onPress={() => handleOptionSelect('Incorrect')}>
-            <Text>Incorrect</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-
-
+          {diaryPictures.length > 1 && (
+            <>
+              <TouchableOpacity
+                style={styles.leftArrowButton}
+                onPress={handlePreviousPicture}
+                disabled={diaryPictureIndex === 0}
+              >
+                <ExpoImage
+                  source={leftArrowIcon}
+                  style={diaryPictureIndex === 0 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.rightArrowButton}
+                onPress={handleNextPicture}
+                disabled={diaryPictureIndex === diaryPictures.length - 1}
+              >
+                <ExpoImage
+                  source={rightArrowIcon}
+                  style={diaryPictureIndex === diaryPictures.length - 1 ? styles.greyedArrowIcon : styles.arrowIcon}
+                />
+              </TouchableOpacity>
+            </>
+          )}
+          {diaryPictures[diaryPictureIndex] ? (
+            <Animated.View style={[styles.imageContainer, { opacity: diaryPictureOpacity }]}>
+              <View style={styles.dateMealContainer}>
+                <Text style={styles.diaryDateText}>
+                  {diaryPictures[diaryPictureIndex].date} - {diaryPictures[diaryPictureIndex].meal}
+                </Text>
+              </View>
+              <View style={styles.dateTimeContainer}>
+                <Text style={styles.diaryTimeText}>
+                  {diaryPictures[diaryPictureIndex].time}
+                </Text>
+              </View>
+              <ExpoImage source={{ uri: diaryPictures[diaryPictureIndex].uri }} style={styles.diaryImage} />
+            </Animated.View>
+          ) : (
+            <View style={styles.picturePlaceholder}></View>
+          )}
+          {isAnalysing ? (
+            <Text style={styles.diaryTextInput}>Analysing...</Text>
+          ) : (
+            diaryPictures[diaryPictureIndex] && diaryPictures[diaryPictureIndex].selectedLabel && (
+              <Text style={styles.diaryTextInput}>
+                {`${formatLabel(diaryPictures[diaryPictureIndex].selectedLabel)} - ${diaryPictures[diaryPictureIndex].calories} calories`}
+              </Text>
+            )
+          )}
+          {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && diaryPictures[diaryPictureIndex].labels && diaryPictures[diaryPictureIndex].labels.map((label, index) => (
+            <TouchableOpacity key={index} style={styles.labelOptionButton} onPress={() => handleOptionSelect(label)}>
+              <Text style={styles.diaryDateText}>{formatLabel(label)}</Text>
+            </TouchableOpacity>
+          ))}
+          {!isAnalysing && diaryPictures[diaryPictureIndex] && !diaryPictures[diaryPictureIndex].selectedLabel && (
+            <TouchableOpacity style={styles.labelOptionButton} onPress={() => handleOptionSelect('Other')}>
+              <Text style={styles.diaryDateText}>Other...</Text>
+            </TouchableOpacity>
+          )}
+          {isCustomInputVisible && (
+            <>
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter food name"
+                value={customFoodName}
+                onChangeText={setCustomFoodName}
+              />
+              <TextInput
+                style={styles.customFoodInput}
+                placeholder="Enter calories"
+                value={customCalories}
+                onChangeText={setCustomCalories}
+                keyboardType="numeric"
+              />
+              <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleCustomFoodSubmit}>
+                <Text style={styles.customFoodSubmitButtonText}>Submit</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </Animated.View>
     </PanGestureHandler>
   );
@@ -1058,7 +1109,6 @@ const handleAnalysePicture = async () => {
           </>
         )}
       </Animated.View>
-
       <Modal
         visible={isDialogVisible}
         transparent={true}
@@ -1086,7 +1136,6 @@ const handleAnalysePicture = async () => {
       >
         {renderDiaryModalContent()}
       </Modal>
-
     </GestureHandlerRootView>
   );
 }
@@ -1672,4 +1721,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: -10,
   },
+  labelOptionButton: {
+    height: 45,
+    padding: 15,
+    marginBottom: 5,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customFoodInput: {
+    width: '80%',
+    padding: 10,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    borderRadius: 5,
+    fontSize: 20,
+  },
+  customFoodSubmitButton: {
+    backgroundColor: '#d3c683',
+    padding: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  customFoodSubmitButtonText: {
+    fontSize: 18,
+    color: '#000',
+    fontFamily: 'eightbit',
+  },
 });
+
+
