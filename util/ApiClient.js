@@ -1,3 +1,6 @@
+// Jak - gonna use expo file system here so we don't have to change environments for the photos
+import * as FileSystem from 'expo-file-system';
+
 // Define the base URL for the API
 const BASE_URL = 'https://api.example.com';
 const SERVER_SECRET_KEY = '';
@@ -74,38 +77,36 @@ async function deleteData(endpoint) {
 }
 
 
-async function query(filename) {
-	const data = fs.readFileSync(filename);
-	const response = await fetch(
-		"https://api-inference.huggingface.co/models/nateraw/food",
-		{
-			headers: {
-				Authorization: "Bearer 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", //secret API key please do not copy
-				"Content-Type": "application/json",
-			},
-			method: "POST",
-			body: data,
-		}
-	);
-    console.log(response)
-	const result = await response.json();
-	return result;
-}
+export async function query(filename) {
+    const data = await FileSystem.readAsStringAsync(filename, { encoding: FileSystem.EncodingType.Base64 });
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/nateraw/food",
+      {
+        headers: {
+          Authorization: "Bearer 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",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ image: data }),
+      }
+    );
+    const result = await response.json();
+    return result;
+  }
+  
 
 //stub for simulating query
-async function queryStub(filename) {
-	const data = fs.readFileSync(filename);
-	data
-	await sleep(5000) //simulate API call
-	const predictions = [
-		{ "label": "french_onion_soup", "score": 0.2141202688217163, "calories": 100 },
-		{ "label": "hot_and_sour_soup", "score": 0.09142252057790756, "calories": 150 },
-		{ "label": "miso_soup", "score": 0.06172953546047211, "calories": 200 },
-		{ "label": "bread_pudding", "score": 0.04476030170917511, "calories": 250 },
-		{ "label": "chicken_curry", "score": 0.02886212430894375, "calories": 300 }
-	]
-	return predictions;
-}
+export async function queryStub(filename) {
+    await sleep(5000); // Simulate API call
+    const predictions = [
+      { "label": "french_onion_soup", "score": 0.2141202688217163, "calories": 100 },
+      { "label": "hot_and_sour_soup", "score": 0.09142252057790756, "calories": 150 },
+      { "label": "miso_soup", "score": 0.06172953546047211, "calories": 200 },
+      { "label": "bread_pudding", "score": 0.04476030170917511, "calories": 250 },
+      { "label": "chicken_curry", "score": 0.02886212430894375, "calories": 300 }
+    ];
+    return predictions;
+  }
 
 //stub for simulating error encountered during query
 async function queryErrorStub(filename) {
@@ -135,3 +136,8 @@ async function submitNewLabelErrorStub(filename, userLabel) {
 	throw new Error('Error in network response');
 	//Prompt user that data submission was unsucessful, aborting submission
 }
+
+// Utility function to simulate delay
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }

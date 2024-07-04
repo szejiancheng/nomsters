@@ -9,6 +9,9 @@ import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 
+// API
+import { query, queryStub, queryErrorStub } from './util/ApiClient.js';
+
 // ASSET IMPORTS
 const petGif = require('./assets/pets/frogbro.gif');
 const backgroundImage = require('./assets/backgrounds/beach.png');
@@ -41,7 +44,7 @@ const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
 const allBackgrounds = [
   backgroundImage, bearClubImage, mountainsCropped1Image, 
-  castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
+  castleCropped1Image, cloudCropped1Image, mysticalCropped1Image, 
 ];
 
 const USER_DATA_KEY = 'userData';
@@ -419,57 +422,55 @@ export default function App() {
     }
   };
 
-// Swipe gesture for background change
-const handleGesture = async ({ nativeEvent }) => {
-  if (nativeEvent.state === State.END) {
-    const userData = await getUserData();
-    const unlockedBackgrounds = [backgroundImage]; // Default background
+  // Swipe gesture for background change
+  const handleGesture = async ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      const userData = await getUserData();
+      const unlockedBackgrounds = [backgroundImage]; // Default background
 
-    if (userData?.purchasedItems?.bearClub) {
-      unlockedBackgrounds.push(bearClubImage);
-    }
-    if (userData?.purchasedItems?.mountains) {
-      unlockedBackgrounds.push(mountainsCropped1Image);
-    }
-    if (userData?.purchasedItems?.castle) {
-      unlockedBackgrounds.push(castleCropped1Image);
-    }
-    if (userData?.purchasedItems?.cloud) {
-      unlockedBackgrounds.push(cloudCropped1Image);
-    }
-    if (userData?.purchasedItems?.mystical1) {
-      unlockedBackgrounds.push(mysticalCropped1Image);
-    }
+      if (userData?.purchasedItems?.bearClub) {
+        unlockedBackgrounds.push(bearClubImage);
+      }
+      if (userData?.purchasedItems?.mountains) {
+        unlockedBackgrounds.push(mountainsCropped1Image);
+      }
+      if (userData?.purchasedItems?.castle) {
+        unlockedBackgrounds.push(castleCropped1Image);
+      }
+      if (userData?.purchasedItems?.cloud) {
+        unlockedBackgrounds.push(cloudCropped1Image);
+      }
+      if (userData?.purchasedItems?.mystical1) {
+        unlockedBackgrounds.push(mysticalCropped1Image);
+      }
 
-    if (nativeEvent.translationX > 50) {
-      // Handle swipe right
-      fadeOut(fadeAnim, () => {
-        setBackgroundIndex((prevIndex) => {
-          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
-          const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
-          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+      if (nativeEvent.translationX > 50) {
+        // Handle swipe right
+        fadeOut(fadeAnim, () => {
+          setBackgroundIndex((prevIndex) => {
+            const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+            const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+            return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+          });
+          fadeIn(fadeAnim);
         });
-        fadeIn(fadeAnim);
-      });
-    } else if (nativeEvent.translationX < -50) {
-      // Handle swipe left
-      fadeOut(fadeAnim, () => {
-        setBackgroundIndex((prevIndex) => {
-          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
-          const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
-          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+      } else if (nativeEvent.translationX < -50) {
+        // Handle swipe left
+        fadeOut(fadeAnim, () => {
+          setBackgroundIndex((prevIndex) => {
+            const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+            const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
+            return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+          });
+          fadeIn(fadeAnim);
         });
-        fadeIn(fadeAnim);
-      });
-    } else if (nativeEvent.translationY < -50) {
-      // Handle swipe up
-      setInventoryVisible(true);
-      setShowInventoryScreen(true);
+      } else if (nativeEvent.translationY < -50) {
+        // Handle swipe up
+        setInventoryVisible(true);
+        setShowInventoryScreen(true);
+      }
     }
-  }
-};
-
-  
+  };
 
   // custom inventory gesture that if you swipe down while in inventory it will close inventory
   const handleInventoryGesture = ({ nativeEvent }) => {
@@ -510,7 +511,6 @@ const handleGesture = async ({ nativeEvent }) => {
       unlockedBackgrounds.push(mysticalCropped1Image);
     }
 
-  
     setInventoryContent(
       <View style={styles.backgroundThumbnailsWrapper}>
         <View style={styles.backgroundThumbnailsContainer}>
@@ -529,6 +529,9 @@ const handleGesture = async ({ nativeEvent }) => {
     );
   };
   
+  
+
+
 
   // Play background music based on background index
   const playBackgroundMusic = async () => {
@@ -536,7 +539,7 @@ const handleGesture = async ({ nativeEvent }) => {
       if (sound) {
         await sound.unloadAsync();
       }
-  
+
       const backgroundMusic = [
         beachMusic,       // 0 - Beach
         bearClubMusic,    // 1 - Bear Club
@@ -545,13 +548,13 @@ const handleGesture = async ({ nativeEvent }) => {
         cloudMusic,       // 4 - Cloud
         mystical1Music,   // 5 - Mystical
       ];
-  
+
       const { sound: newSound } = await Audio.Sound.createAsync(
         backgroundMusic[backgroundIndex]
       );
-  
+
       setSound(newSound);
-  
+
       await newSound.setIsLoopingAsync(true);
       if (musicEnabled) {
         await newSound.playAsync();
@@ -560,6 +563,7 @@ const handleGesture = async ({ nativeEvent }) => {
       console.error("Error loading or playing sound:", error);
     }
   };
+
   // Handle camera permissions
   if (!permission) {
     return <View />;
@@ -829,6 +833,7 @@ const handleGesture = async ({ nativeEvent }) => {
         date: currentDate.toLocaleDateString(), // Save the date as a string
         time: currentDate.toLocaleTimeString(), // Save the time as a string
         meal, // Save the meal type as a string
+        apiData: '', // Placeholder for API data
       };
 
       const userData = await getUserData();
@@ -843,6 +848,21 @@ const handleGesture = async ({ nativeEvent }) => {
       setDiaryPictures(updatedPictures);
       setDiaryPictureIndex(updatedPictures.length - 1);
       setDiaryModalVisible(true);
+
+      // Call the query function and update the pictureData with the response
+      const apiResponse = await queryStub(newPath); // or query(newPath) if using the real API
+      if (apiResponse) {
+        pictureData.apiData = JSON.stringify(apiResponse, null, 2); // Convert the response to a string
+        const updatedPicturesWithApiData = updatedPictures.map((pic) => 
+          pic.uri === pictureData.uri ? pictureData : pic
+        );
+
+        await updateUserData({
+          ...userData,
+          pictures: updatedPicturesWithApiData,
+        });
+        setDiaryPictures(updatedPicturesWithApiData);
+      }
     } catch (error) {
       console.error('Error analyzing picture:', error);
     } finally {
@@ -860,7 +880,7 @@ const handleGesture = async ({ nativeEvent }) => {
       });
     });
   };
-  
+
   const handlePreviousPicture = () => {
     fadeOut(diaryPictureOpacity, () => {
       setDiaryPictureIndex((prevIndex) => {
@@ -1004,7 +1024,7 @@ const handleGesture = async ({ nativeEvent }) => {
                 <View style={styles.picturePlaceholder}></View>
               )}
               <Text style={styles.diaryTextInput}>
-                API Food data goes here.
+                {diaryPictures[diaryPictureIndex].apiData ? diaryPictures[diaryPictureIndex].apiData : 'API Food data goes here.'}
               </Text>
             </View>
           </Animated.View>
@@ -1504,8 +1524,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  diaryModalContent: {
-    width: '80%',
+  diaryModalContent: {    width: '90%',
     padding: 20,
     backgroundColor: '#F8E5CE',
     borderRadius: 10,
@@ -1549,7 +1568,7 @@ const styles = StyleSheet.create({
   },
   diaryImage: {
     width: '100%',
-    height: '90%', // This ensures that only the top 2/3 of the image is visible
+    height: '100%',
     resizeMode: 'cover',
   },
   picturePlaceholder: {
