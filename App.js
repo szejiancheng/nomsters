@@ -91,11 +91,6 @@ const unlockItem = async (itemKey) => {
   }
 };
 
-// const isItemUnlocked = async (itemKey) => {
-//   const userData = await getUserData();
-//   return userData && userData.purchasedItems[itemKey];
-// };
-
 // Purchase Function
 const purchaseItem = async (itemKey, cost) => {
   const userData = await getUserData();
@@ -305,8 +300,8 @@ export default function App() {
   const manualTestAddGold = async () => {
     const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
     setPetHealth(newHealth);
-    await addGold(10);
-    setGoldCoins(prevGold => prevGold + 10); // Update state to reflect gold addition
+    await addGold(100);
+    setGoldCoins(prevGold => prevGold + 100); // Update state to reflect gold addition
     animateHealthBar(newHealth);
   };
 
@@ -424,53 +419,57 @@ export default function App() {
     }
   };
 
-  // Swipe gesture for background change
-  const handleGesture = async ({ nativeEvent }) => {
-    if (nativeEvent.state === State.END) {
-      const userData = await getUserData();
-      const unlockedBackgrounds = [backgroundImage];
-      if (userData?.purchasedItems?.bearClub) {
-        unlockedBackgrounds.push(bearClubImage);
-      }
-      if (userData?.purchasedItems?.mountains) {
-        unlockedBackgrounds.push(mountainsCropped1Image);
-      }
-      if (userData?.purchasedItems?.castle) {
-        unlockedBackgrounds.push(castleCropped1Image);
-      }
-      if (userData?.purchasedItems?.cloud) {
-        unlockedBackgrounds.push(cloudCropped1Image);
-      }
-      if (userData?.purchasedItems?.mystical1) {
-        unlockedBackgrounds.push(mysticalCropped1Image);
-      }
+// Swipe gesture for background change
+const handleGesture = async ({ nativeEvent }) => {
+  if (nativeEvent.state === State.END) {
+    const userData = await getUserData();
+    const unlockedBackgrounds = [backgroundImage]; // Default background
 
-
-      if (nativeEvent.translationX > 50) {
-        // Handle swipe right
-        fadeOut(fadeAnim, () => {
-          setBackgroundIndex((prevIndex) => {
-            const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
-            return newIndex;
-          });
-          fadeIn(fadeAnim);
-        });
-      } else if (nativeEvent.translationX < -50) {
-        // Handle swipe left
-        fadeOut(fadeAnim, () => {
-          setBackgroundIndex((prevIndex) => {
-            const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
-            return newIndex;
-          });
-          fadeIn(fadeAnim);
-        });
-      } else if (nativeEvent.translationY < -50) {
-        // Handle swipe up
-        setInventoryVisible(true);
-        setShowInventoryScreen(true);
-      }
+    if (userData?.purchasedItems?.bearClub) {
+      unlockedBackgrounds.push(bearClubImage);
     }
-  };
+    if (userData?.purchasedItems?.mountains) {
+      unlockedBackgrounds.push(mountainsCropped1Image);
+    }
+    if (userData?.purchasedItems?.castle) {
+      unlockedBackgrounds.push(castleCropped1Image);
+    }
+    if (userData?.purchasedItems?.cloud) {
+      unlockedBackgrounds.push(cloudCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical1) {
+      unlockedBackgrounds.push(mysticalCropped1Image);
+    }
+
+    if (nativeEvent.translationX > 50) {
+      // Handle swipe right
+      fadeOut(fadeAnim, () => {
+        setBackgroundIndex((prevIndex) => {
+          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+          const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+        });
+        fadeIn(fadeAnim);
+      });
+    } else if (nativeEvent.translationX < -50) {
+      // Handle swipe left
+      fadeOut(fadeAnim, () => {
+        setBackgroundIndex((prevIndex) => {
+          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+          const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
+          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+        });
+        fadeIn(fadeAnim);
+      });
+    } else if (nativeEvent.translationY < -50) {
+      // Handle swipe up
+      setInventoryVisible(true);
+      setShowInventoryScreen(true);
+    }
+  }
+};
+
+  
 
   // custom inventory gesture that if you swipe down while in inventory it will close inventory
   const handleInventoryGesture = ({ nativeEvent }) => {
@@ -667,7 +666,9 @@ export default function App() {
       <View style={styles.storeItemsContainer}>
         {storeItems.map((item, index) => (
           <View key={index} style={styles.storeItem}>
-            <Text style={styles.storeItemName}>{item.name}</Text>
+            <View style={styles.storeItemNameContainer}>
+              <Text style={styles.storeItemName}>{item.name}</Text>
+            </View>
             <TouchableOpacity
               style={styles.itemContainer}
               onPress={() => handlePurchaseItem(item.key, item.cost)}
@@ -683,9 +684,11 @@ export default function App() {
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
-            <Text style={styles.storeItemPrice}>
-              {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
-            </Text>
+            <View style={styles.storeItemPriceContainer}>
+              <Text style={styles.storeItemPrice}>
+                {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
+              </Text>
+            </View>
           </View>
         ))}
       </View>
@@ -1259,28 +1262,44 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 250,
+    marginTop: 160,
   },
   storeItem: {
     width: '40%',
     height: '20%',
-    margin: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginVertical: 47,
+    marginHorizontal: 10,
+    // backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 10,
+  },
+  storeItemNameContainer: {
+    marginBottom: -10,
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 20,
   },
   storeItemName: {
-    fontSize: 25,
-    color: '#fff',
-    marginBottom: 5,
+    fontSize: 20,
+    color: '#000000',
     fontWeight: 'bold',
     fontFamily: 'eightbit',
   },
+  storeItemPriceContainer: {
+    marginTop: -5,
+    backgroundColor: 'black',
+    padding: 7,
+    borderRadius: 20,
+  },
   storeItemPrice: {
     fontSize: 18,
-    color: 'black',
-    marginTop: 5,
+    color: 'gold',
     fontFamily: 'eightbit',
   },
   lockIconContainer: {
