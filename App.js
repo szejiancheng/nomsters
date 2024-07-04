@@ -25,13 +25,24 @@ const soundIcon = require('./assets/icons/sound.png');
 const soundMuteIcon = require('./assets/icons/soundmute.png');
 const beachMusic = require('./assets/music/beach.wav');
 const bearClubMusic = require('./assets/music/bearclub.wav');
+const mountainsMusic = require('./assets/music/mountains.wav');
+const castleMusic = require('./assets/music/castle.wav');
+const cloudMusic = require('./assets/music/cloud.wav');
+const mystical1Music = require('./assets/music/mystical1.wav');
 const takePictureIcon = require('./assets/icons/takePicture.png');
+const mysticalCropped1Image = require('./assets/backgrounds/Mystical_CROPPED1.png');
+const mountainsCropped1Image = require('./assets/backgrounds/Mountains_CROPPED.png');
+const castleCropped1Image = require('./assets/backgrounds/Castle_CROPPED.png');
+const cloudCropped1Image = require('./assets/backgrounds/Cloud_CROPPED.png');
 const diaryIcon = require('./assets/icons/diary.png');
 
 const rightArrowIcon = require('./assets/icons/rightarrow.png');
 const leftArrowIcon = require('./assets/icons/leftarrow.png');
 
-const allBackgrounds = [backgroundImage, bearClubImage];
+const allBackgrounds = [
+  backgroundImage, bearClubImage, mountainsCropped1Image, 
+  castleCropped1Image,cloudCropped1Image , mysticalCropped1Image, 
+];
 
 const USER_DATA_KEY = 'userData';
 
@@ -80,11 +91,6 @@ const unlockItem = async (itemKey) => {
   }
 };
 
-// const isItemUnlocked = async (itemKey) => {
-//   const userData = await getUserData();
-//   return userData && userData.purchasedItems[itemKey];
-// };
-
 // Purchase Function
 const purchaseItem = async (itemKey, cost) => {
   const userData = await getUserData();
@@ -118,6 +124,11 @@ export default function App() {
   const [goldCoins, setGoldCoins] = useState(0);
   // Item Unlocks
   const [isBearClubUnlocked, setIsBearClubUnlocked] = useState(false);
+  const [isMountainUnlocked, setIsMountainUnlocked] = useState(false);
+  const [isCastleUnlocked, setIsCastleUnlocked] = useState(false);
+  const [isCloudUnlocked, setIsCloudUnlocked] = useState(false);
+  const [isMystical1Unlocked, setIsMystical1Unlocked] = useState(false);
+
   const [purchasedItems, setPurchasedItems] = useState({});
   // Utility
   const [menuVisible, setMenuVisible] = useState(false);
@@ -217,6 +228,11 @@ export default function App() {
         setGoldCoins(data.goldCoins);
         setPurchasedItems(data.purchasedItems || {});
         setIsBearClubUnlocked(data.purchasedItems?.bearClub || false);
+        setIsMountainUnlocked(data.purchasedItems?.mountains || false);
+        setIsCastleUnlocked(data.purchasedItems?.castle || false);
+        setIsCloudUnlocked(data.purchasedItems?.cloud || false);
+        setIsMystical1Unlocked(data.purchasedItems?.mystical1 || false);
+
         if (data.petName.trim() === '') {
           setIsDialogVisible(true);
         }
@@ -267,6 +283,11 @@ export default function App() {
       setPetHealth(100); // Reset petHealth state after clearing data
       setInventoryContent(''); // Reset inventoryContent state after clearing data
       setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
+      setIsMountainUnlocked(false);
+      setIsCastleUnlocked(false);
+      setIsCloudUnlocked(false);
+      setIsMystical1Unlocked(false);
+
       setPurchasedItems({}); // Reset purchasedItems state after clearing data
       setPetName(''); // Reset petName state after clearing data
       setIsDialogVisible(true); // Show dialog to set pet name after clearing data
@@ -279,8 +300,8 @@ export default function App() {
   const manualTestAddGold = async () => {
     const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
     setPetHealth(newHealth);
-    await addGold(10);
-    setGoldCoins(prevGold => prevGold + 10); // Update state to reflect gold addition
+    await addGold(100);
+    setGoldCoins(prevGold => prevGold + 100); // Update state to reflect gold addition
     animateHealthBar(newHealth);
   };
 
@@ -398,40 +419,57 @@ export default function App() {
     }
   };
 
-  // Swipe gesture for background change
-  const handleGesture = async ({ nativeEvent }) => {
-    if (nativeEvent.state === State.END) {
-      const userData = await getUserData();
-      const unlockedBackgrounds = [backgroundImage];
-      if (userData?.purchasedItems?.bearClub) {
-        unlockedBackgrounds.push(bearClubImage);
-      }
+// Swipe gesture for background change
+const handleGesture = async ({ nativeEvent }) => {
+  if (nativeEvent.state === State.END) {
+    const userData = await getUserData();
+    const unlockedBackgrounds = [backgroundImage]; // Default background
 
-      if (nativeEvent.translationX > 50) {
-        // Handle swipe right
-        fadeOut(fadeAnim, () => {
-          setBackgroundIndex((prevIndex) => {
-            const newIndex = (prevIndex - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
-            return newIndex;
-          });
-          fadeIn(fadeAnim);
-        });
-      } else if (nativeEvent.translationX < -50) {
-        // Handle swipe left
-        fadeOut(fadeAnim, () => {
-          setBackgroundIndex((prevIndex) => {
-            const newIndex = (prevIndex + 1) % unlockedBackgrounds.length;
-            return newIndex;
-          });
-          fadeIn(fadeAnim);
-        });
-      } else if (nativeEvent.translationY < -50) {
-        // Handle swipe up
-        setInventoryVisible(true);
-        setShowInventoryScreen(true);
-      }
+    if (userData?.purchasedItems?.bearClub) {
+      unlockedBackgrounds.push(bearClubImage);
     }
-  };
+    if (userData?.purchasedItems?.mountains) {
+      unlockedBackgrounds.push(mountainsCropped1Image);
+    }
+    if (userData?.purchasedItems?.castle) {
+      unlockedBackgrounds.push(castleCropped1Image);
+    }
+    if (userData?.purchasedItems?.cloud) {
+      unlockedBackgrounds.push(cloudCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical1) {
+      unlockedBackgrounds.push(mysticalCropped1Image);
+    }
+
+    if (nativeEvent.translationX > 50) {
+      // Handle swipe right
+      fadeOut(fadeAnim, () => {
+        setBackgroundIndex((prevIndex) => {
+          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+          const newIndexInUnlocked = (currentIndexInUnlocked - 1 + unlockedBackgrounds.length) % unlockedBackgrounds.length;
+          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+        });
+        fadeIn(fadeAnim);
+      });
+    } else if (nativeEvent.translationX < -50) {
+      // Handle swipe left
+      fadeOut(fadeAnim, () => {
+        setBackgroundIndex((prevIndex) => {
+          const currentIndexInUnlocked = unlockedBackgrounds.indexOf(allBackgrounds[prevIndex]);
+          const newIndexInUnlocked = (currentIndexInUnlocked + 1) % unlockedBackgrounds.length;
+          return allBackgrounds.indexOf(unlockedBackgrounds[newIndexInUnlocked]);
+        });
+        fadeIn(fadeAnim);
+      });
+    } else if (nativeEvent.translationY < -50) {
+      // Handle swipe up
+      setInventoryVisible(true);
+      setShowInventoryScreen(true);
+    }
+  }
+};
+
+  
 
   // custom inventory gesture that if you swipe down while in inventory it will close inventory
   const handleInventoryGesture = ({ nativeEvent }) => {
@@ -459,19 +497,38 @@ export default function App() {
     if (userData?.purchasedItems?.bearClub) {
       unlockedBackgrounds.push(bearClubImage);
     }
+    if (userData?.purchasedItems?.mountains) {
+      unlockedBackgrounds.push(mountainsCropped1Image);
+    }
+    if (userData?.purchasedItems?.castle) {
+      unlockedBackgrounds.push(castleCropped1Image);
+    }
+    if (userData?.purchasedItems?.cloud) {
+      unlockedBackgrounds.push(cloudCropped1Image);
+    }
+    if (userData?.purchasedItems?.mystical1) {
+      unlockedBackgrounds.push(mysticalCropped1Image);
+    }
+
+  
     setInventoryContent(
-      <>
-        {unlockedBackgrounds.map((bg, index) => (
-          <TouchableOpacity key={index} onPress={() => setBackgroundIndex(index)}>
-            <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+      <View style={styles.backgroundThumbnailsWrapper}>
+        <View style={styles.backgroundThumbnailsContainer}>
+          {unlockedBackgrounds.map((bg, index) => (
+            <TouchableOpacity key={index} onPress={() => setBackgroundIndex(allBackgrounds.indexOf(bg))}>
+              <ExpoImage source={bg} style={styles.backgroundThumbnail} />
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.backbuttonContainer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.backButton} onPress={() => setInventoryContent('')}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-      </>
+        </View>
+      </View>
     );
   };
+  
 
   // Play background music based on background index
   const playBackgroundMusic = async () => {
@@ -479,13 +536,22 @@ export default function App() {
       if (sound) {
         await sound.unloadAsync();
       }
-
+  
+      const backgroundMusic = [
+        beachMusic,       // 0 - Beach
+        bearClubMusic,    // 1 - Bear Club
+        mountainsMusic,   // 2 - Mountains
+        castleMusic,      // 3 - Castle
+        cloudMusic,       // 4 - Cloud
+        mystical1Music,   // 5 - Mystical
+      ];
+  
       const { sound: newSound } = await Audio.Sound.createAsync(
-        backgroundIndex === 0 ? beachMusic : bearClubMusic
+        backgroundMusic[backgroundIndex]
       );
-
+  
       setSound(newSound);
-
+  
       await newSound.setIsLoopingAsync(true);
       if (musicEnabled) {
         await newSound.playAsync();
@@ -494,7 +560,6 @@ export default function App() {
       console.error("Error loading or playing sound:", error);
     }
   };
-
   // Handle camera permissions
   if (!permission) {
     return <View />;
@@ -502,9 +567,15 @@ export default function App() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
-        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="grant permission" />
+      <View style={styles.permissionContainer}>
+        <Text style={styles.permissionText}>
+          <Text style={{ color: 'red' }}>Disclaimer:</Text>
+          {' '}
+          Nomsters needs your permission to use your camera so we can analyze your food.
+        </Text>
+        <TouchableOpacity onPress={requestPermission} style={styles.permissionButton}>
+          <Text style={styles.permissionGrantText}>Grant Permission</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -595,7 +666,9 @@ export default function App() {
       <View style={styles.storeItemsContainer}>
         {storeItems.map((item, index) => (
           <View key={index} style={styles.storeItem}>
-            <Text style={styles.storeItemName}>{item.name}</Text>
+            <View style={styles.storeItemNameContainer}>
+              <Text style={styles.storeItemName}>{item.name}</Text>
+            </View>
             <TouchableOpacity
               style={styles.itemContainer}
               onPress={() => handlePurchaseItem(item.key, item.cost)}
@@ -611,9 +684,11 @@ export default function App() {
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
-            <Text style={styles.storeItemPrice}>
-              {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
-            </Text>
+            <View style={styles.storeItemPriceContainer}>
+              <Text style={styles.storeItemPrice}>
+                {item.isUnlocked ? 'Purchased!' : `${item.cost} Gold`}
+              </Text>
+            </View>
           </View>
         ))}
       </View>
@@ -629,6 +704,35 @@ export default function App() {
       image: bearClubImage,
       isUnlocked: isBearClubUnlocked,
     },
+    {
+      key: 'mountains',
+      name: 'Mountains',
+      cost: 150,
+      image: mountainsCropped1Image,
+      isUnlocked: isMountainUnlocked,
+    },
+    {
+      key: 'castle',
+      name: 'Castle',
+      cost: 200,
+      image: castleCropped1Image,
+      isUnlocked: isCastleUnlocked,
+    },
+    {
+      key: 'cloud',
+      name: 'Cloud',
+      cost: 200,
+      image: cloudCropped1Image,
+      isUnlocked: isCloudUnlocked,
+    },
+    {
+      key: 'mystical1',
+      name: 'Mystical',
+      cost: 300,
+      image: mysticalCropped1Image,
+      isUnlocked: isMystical1Unlocked,
+    },
+
     // Add more items here
   ];
 
@@ -640,6 +744,19 @@ export default function App() {
       if (itemKey === 'bearClub') {
         setIsBearClubUnlocked(true);
       }
+      if (itemKey === 'mountains') {
+        setIsMountainUnlocked(true);
+      }
+      if (itemKey === 'castle') {
+        setIsCastleUnlocked(true);
+      }
+      if (itemKey === 'cloud') {
+        setIsCloudUnlocked(true);
+      }
+      if (itemKey === 'mystical1') {
+        setIsMystical1Unlocked(true);
+      }
+
       // Update state for other items if necessary
     }
   };
@@ -903,6 +1020,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+    justifyContent: 'center', 
+    alignItems: 'center',     
+  },
+  permissionText: {
+    fontSize: 24,             
+    color: 'white',           
+    textAlign: 'center',      
+    fontFamily: 'eightbit',   
+  },
+  permissionGrantText: {
+    fontSize: 27,             
+    color: 'black',           
+    textAlign: 'center',      
+    fontFamily: 'eightbit',   
+  },
+  permissionButton: {
+    backgroundColor: 'white', 
+    paddingVertical: 10,       
+    paddingHorizontal: 20,     
+    borderRadius: 5,           
+    alignItems: 'center',      
+    marginTop: 20,             
+  },
+  
   backgroundContainer: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -1092,14 +1236,15 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     position: 'absolute',
-    top: 60,
+    top: 90,
     width: '100%',
     alignItems: 'center',
   },
   newScreenText: {
     fontSize: 24,
-    color: '#fff',
+    color: '#000',
     zIndex: 1,
+    fontFamily: 'eightbit',
   },
   closeButton: {
     position: 'absolute',
@@ -1117,27 +1262,45 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 250,
+    marginTop: 160,
   },
   storeItem: {
     width: '40%',
     height: '20%',
-    margin: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginVertical: 47,
+    marginHorizontal: 10,
+    // backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 10,
+  },
+  storeItemNameContainer: {
+    marginBottom: -10,
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 20,
   },
   storeItemName: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 5,
+    fontSize: 20,
+    color: '#000000',
     fontWeight: 'bold',
+    fontFamily: 'eightbit',
+  },
+  storeItemPriceContainer: {
+    marginTop: -5,
+    backgroundColor: 'black',
+    padding: 7,
+    borderRadius: 20,
   },
   storeItemPrice: {
     fontSize: 18,
     color: 'gold',
-    marginTop: 5,
+    fontFamily: 'eightbit',
   },
   lockIconContainer: {
     position: 'absolute',
@@ -1301,18 +1464,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 5,
   },
-  backgroundThumbnail: { //inventory background icons
-    width: 200,
-    height: 200,
-    margin: 10,
+  backgroundThumbnailsWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backgroundThumbnailsContainer: {
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backgroundThumbnail: {
+    width: Dimensions.get('window').width / 2 - 20,
+    height: 150,
+    margin: 5,
     borderRadius: 10,
+  },
+  backbuttonContainer: {
+    alignItems: 'center',
+    marginTop: 20,
   },
   backButton: {
     backgroundColor: '#d3c683',
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
+    width: Dimensions.get('window').width / 2 - 20,
   },
   backButtonText: {
     fontSize: 18,
