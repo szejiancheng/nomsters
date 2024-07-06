@@ -114,9 +114,10 @@ export default function App() {
 
   // STATE MANAGEMENT
   // Health Bar
-  const [petHealth, setPetHealth] = useState(100);
+  const maxPetHealth = 1000;
+  const [petHealth, setPetHealth] = useState(maxPetHealth);
   const [petName, setPetName] = useState('');
-  const healthBarWidth = useRef(new Animated.Value(100)).current;
+  const healthBarWidth = useRef(new Animated.Value(maxPetHealth)).current;
   // Fade Animations
   const [fadeAnim] = useState(new Animated.Value(1)); // Single fadeAnim for all fade animations
   // Screen Renders
@@ -205,10 +206,10 @@ export default function App() {
   // Health decrease logic
   useEffect(() => {
     const interval = setInterval(() => {
-      const newHealth = Math.min(Math.max(petHealth - 5, 0), 100);
+      const newHealth = Math.min(Math.max(petHealth - 5, 0), maxPetHealth);
       setPetHealth(newHealth);
       animateHealthBar(newHealth);
-    }, 5000);
+    }, 20000);
 
     return () => clearInterval(interval);
   }, [petHealth]);
@@ -235,7 +236,7 @@ export default function App() {
         const initialData = {
           petName: '',
           goldCoins: 0,
-          petHealth: 100,
+          petHealth: maxPetHealth,
           pictures: [],
           purchasedItems: {}
         };
@@ -331,7 +332,7 @@ export default function App() {
     await addGold(calories*1.5);
     setGoldCoins(prevGold => prevGold + calories*1.5);
   
-    const newHealth = Math.min(petHealth + calories, 100);
+    const newHealth = Math.min(petHealth + calories, maxPetHealth);
     setPetHealth(newHealth);
     animateHealthBar(newHealth);
   };
@@ -381,7 +382,7 @@ export default function App() {
       await AsyncStorage.clear();
       await initializeUserData();
       setGoldCoins(0); // Reset goldCoins state after clearing data
-      setPetHealth(100); // Reset petHealth state after clearing data
+      setPetHealth(maxPetHealth); // Reset petHealth state after clearing data
       setInventoryContent(''); // Reset inventoryContent state after clearing data
       setIsBearClubUnlocked(false); // Reset isBearClubUnlocked state after clearing data
       setIsMountainUnlocked(false);
@@ -399,7 +400,7 @@ export default function App() {
 
   // manualTest for adding gold
   const manualTestAddGold = async () => {
-    const newHealth = Math.min(Math.max(petHealth + 10, 0), 100);
+    const newHealth = Math.min(Math.max(petHealth + 10, 0), maxPetHealth);
     setPetHealth(newHealth);
     await addGold(100);
     setGoldCoins(prevGold => prevGold + 100); // Update state to reflect gold addition
@@ -1012,12 +1013,12 @@ export default function App() {
 
   // Health Bar Animations
   const animatedWidth = healthBarWidth.interpolate({
-    inputRange: [0, 100],
+    inputRange: [0, maxPetHealth],
     outputRange: ['0%', '100%'],
   });
 
   const animatedColor = healthBarWidth.interpolate({
-    inputRange: [0, 50, 100],
+    inputRange: [0, 500, 1000],
     outputRange: ['red', 'orange', 'green'],
   });
 
@@ -1115,7 +1116,12 @@ export default function App() {
                 <View style={styles.picturePlaceholder}></View>
               )}
               {isAnalysing ? (
-                <ExpoImage source={loadingGif} style={styles.loadingGif} />
+                <>
+                  <ExpoImage source={loadingGif} style={styles.loadingGif} />
+                  <Text style={styles.loadingText}>
+                    Please give us 20-30secs to analyse your {currentPicture.meal}
+                  </Text>
+                </>
               ) : (
                 <>
                   {currentPicture && currentPicture.selectedLabel && (
@@ -1181,6 +1187,7 @@ export default function App() {
       </PanGestureHandler>
     );
   };
+  
   
   
 
@@ -1414,7 +1421,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 190,
     right: 0,
-    width: 100,
+    width: 120,
     height: 40,
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -1800,6 +1807,13 @@ const styles = StyleSheet.create({
   diaryDateText: {
     fontSize: 25,
     color: '#000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontFamily: 'eightbit',
+  },
+  loadingText: {
+    fontSize: 22,
+    color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
     fontFamily: 'eightbit',
