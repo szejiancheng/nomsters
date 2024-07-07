@@ -949,7 +949,7 @@ export default function App() {
       setDiaryPictureIndex(updatedPictures.length - 1);
       setDiaryModalVisible(true);
   
-      const apiResponse = await queryStub(newPath);
+      const apiResponse = await query(newPath);
       if (apiResponse) {
         const labels = apiResponse.map(item => item.label);
         pictureData.apiData = JSON.stringify(apiResponse, null, 2);

@@ -2,7 +2,7 @@
 import * as FileSystem from 'expo-file-system';
 
 // Define the base URL for the API
-const BASE_URL = 'https://api.example.com';
+const BASE_URL = 'https://nomsters-bnmqimcuea-as.a.run.app/';
 const SERVER_SECRET_KEY = '';
 const USER_ID = '';
 
