@@ -148,6 +148,7 @@ export default function App() {
   // Camera Storage
   const [capturedImage, setCapturedImage] = useState(null);
   const cameraRef = useRef(null);
+  const [showPicturePreview, setShowPicturePreview] = useState(false);
   // Modal
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [newPetName, setNewPetName] = useState('');
@@ -329,17 +330,18 @@ export default function App() {
   
     // Update gold and pet health
     const calories = updatedPictures[diaryPictureIndex].calories;
-    await addGold(calories*1.5);
-    setGoldCoins(prevGold => prevGold + calories*1.5);
-  
-    const newHealth = Math.min(petHealth + calories, maxPetHealth);
-    setPetHealth(newHealth);
-    animateHealthBar(newHealth);
+
+    if (calories) {
+        await addGold(calories * 1.5);
+        setGoldCoins(prevGold => prevGold + calories * 1.5);
+        const newHealth = Math.min(petHealth + calories, maxPetHealth);
+        setPetHealth(newHealth);
+        animateHealthBar(newHealth);
+    }
   };
   
   const handleCustomFoodSubmit = async () => {
     const calories = parseInt(customCalories, 10);
-  
     const userData = await getUserData();
     const pictures = userData?.pictures || [];
     const updatedPictures = pictures.map((pic, index) => {
@@ -503,6 +505,7 @@ export default function App() {
       if (cameraRef.current) {
         const photo = await cameraRef.current.takePictureAsync();
         setCapturedImage(photo.uri);
+        setShowPicturePreview(true);
         setShowCameraScreen(false);
       }
     } catch (error) {
@@ -905,6 +908,7 @@ export default function App() {
       setApiError(null); // Reset error state before new attempt
       const filename = capturedImage.split('/').pop();
       const newPath = `${FileSystem.documentDirectory}${filename}`;
+      console.log(filename);
       await FileSystem.moveAsync({
         from: capturedImage,
         to: newPath,
@@ -952,6 +956,7 @@ export default function App() {
   
       const apiResponse = await query(newPath);
       if (apiResponse) {
+        console.log(apiResponse);
         const labels = apiResponse.map(item => item.label);
         pictureData.apiData = JSON.stringify(apiResponse, null, 2);
         pictureData.labels = labels;
@@ -983,7 +988,112 @@ export default function App() {
       setDiaryPictures(updatedPictures);
       setApiError('Error in network response. Please try again.');
     } finally {
-      setCapturedImage(null);
+      // setCapturedImage(null);
+      setShowPicturePreview(false);
+      setIsAnalysing(false);
+      setIsApiCalling(false); // Reset API call status
+    }
+  };
+
+  const generateUniqueFilename = (uri) => {
+    const timestamp = new Date().getTime();
+    const originalFilename = uri.split('/').pop();
+    const filenameWithoutExtension = originalFilename.split('.').slice(0, -1).join('.');
+    const extension = originalFilename.split('.').pop();
+    return `${filenameWithoutExtension}_${timestamp}.${extension}`;
+  };
+
+  const handleRetryPicture = async () => {
+    try {
+      setIsAnalysing(true);
+      setIsApiCalling(true); // Set API call status to true
+      setApiError(null); // Reset error state before new attempt
+  
+      const originalUri = diaryPictures[diaryPictureIndex].uri;
+      const newFilename = generateUniqueFilename(originalUri);
+      const newPath = `${FileSystem.documentDirectory}${newFilename}`;
+  
+      await FileSystem.moveAsync({
+        from: originalUri,
+        to: newPath,
+      });
+  
+      const currentDate = new Date();
+      const hours = currentDate.getHours();
+      let meal = '';
+  
+      if (hours >= 6 && hours < 11) {
+        meal = 'Breakfast';
+      } else if (hours >= 11 && hours < 15) {
+        meal = 'Lunch';
+      } else if (hours >= 15 && hours < 18) {
+        meal = 'Tea Time Snack';
+      } else if (hours >= 18 && hours < 22) {
+        meal = 'Dinner';
+      } else {
+        meal = 'Supper';
+      }
+  
+      const pictureData = {
+        uri: newPath,
+        date: currentDate.toLocaleDateString(),
+        time: currentDate.toLocaleTimeString(),
+        meal, // Save the meal type as a string
+        apiData: '', // Placeholder for API data
+        labels: [], // Placeholder for API labels
+        hasError: false, // Add error field to picture data
+        error: null, // Initialize error property
+      };
+  
+      const userData = await getUserData();
+      const pictures = userData?.pictures || [];
+      const updatedPictures = pictures.map((pic, index) => 
+        index === diaryPictureIndex ? pictureData : pic
+      );
+  
+      await updateUserData({
+        ...userData,
+        pictures: updatedPictures,
+      });
+  
+      setDiaryPictures(updatedPictures);
+      setDiaryPictureIndex(updatedPictures.length - 1);
+      setDiaryModalVisible(true);
+  
+      const apiResponse = await queryErrorStub(newPath);
+      if (apiResponse) {
+        console.log(apiResponse);
+        const labels = apiResponse.map(item => item.label);
+        pictureData.apiData = JSON.stringify(apiResponse, null, 2);
+        pictureData.labels = labels;
+        pictureData.hasError = false;
+        pictureData.error = null; // Ensure error is null if no error occurred
+        const updatedPicturesWithApiData = updatedPictures.map((pic) =>
+          pic.uri === pictureData.uri ? pictureData : pic
+        );
+  
+        await updateUserData({
+          ...userData,
+          pictures: updatedPicturesWithApiData,
+        });
+        setDiaryPictures(updatedPicturesWithApiData);
+      }
+    } catch (error) {
+      console.error('Error analyzing picture:', error);
+      const userData = await getUserData();
+      const pictures = userData?.pictures || [];
+      const updatedPictures = pictures.map((pic, index) =>
+        index === diaryPictureIndex ? { ...pic, hasError: true, error: 'Error in network response. Please try again.' } : pic
+      );
+  
+      await updateUserData({
+        ...userData,
+        pictures: updatedPictures,
+      });
+  
+      setDiaryPictures(updatedPictures);
+      setApiError('Error in network response. Please try again.');
+    } finally {
       setIsAnalysing(false);
       setIsApiCalling(false); // Reset API call status
     }
@@ -1057,7 +1167,7 @@ export default function App() {
   // Diary Modal Content
   const renderDiaryModalContent = () => {
     const currentPicture = diaryPictures[diaryPictureIndex];
-    
+  
     return (
       <PanGestureHandler onHandlerStateChange={handleDiarySwipeGesture}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -1127,7 +1237,7 @@ export default function App() {
                   {currentPicture && currentPicture.selectedLabel && (
                     <View style={styles.selectedFoodContainer}>
                       <Text style={styles.diaryTextInput}>
-                        {`${formatLabel(currentPicture.selectedLabel)} - ${currentPicture.calories} calories`}
+                        {`${formatLabel(currentPicture.selectedLabel)} - ${currentPicture.calories ? currentPicture.calories + ' calories' : 'could not find nutritional data'}`}
                       </Text>
                       <Text style={styles.diaryDateText}>
                         <Text style={{ color: 'gold' }}>+ {currentPicture.goldAdded} Gold</Text>
@@ -1152,7 +1262,7 @@ export default function App() {
                       {currentPicture && currentPicture.error && !isAnalysing && (
                         <View>
                           <Text style={styles.errorText}>{currentPicture.error}</Text>
-                          <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleAnalysePicture}>
+                          <TouchableOpacity style={styles.customFoodSubmitButton} onPress={handleRetryPicture}>
                             <Text style={styles.customFoodSubmitButtonText}>Retry</Text>
                           </TouchableOpacity>
                         </View>
@@ -1195,7 +1305,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Animated.View style={{ flex: 1 }}>
-        {capturedImage ? renderPicturePreview() : (
+        {showPicturePreview ? renderPicturePreview() : (
           <>
             <Animated.View style={{ flex: 1, transform: [{ translateY: mainScreenSlideAnim }] }}>
               {showCameraScreen ? renderCameraScreen() : (showNewScreen ? renderStoreScreen() : renderMainScreen())}

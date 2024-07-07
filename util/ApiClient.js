@@ -79,8 +79,9 @@ async function deleteData(endpoint) {
 // Function to query the API with an image file
 export async function query(filename) {
   try {
+    console.log('error in apiClient');
     const data = await FileSystem.readAsStringAsync(filename, { encoding: FileSystem.EncodingType.Base64 });
-    const response = await fetch("https://api-inference.huggingface.co/models/nateraw/food", {
+    const response = await fetch("https://nomsters-bnmqimcuea-as.a.run.app/infer", {
       headers: {
         Authorization: "Bearer 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",
         "Content-Type": "application/json",
